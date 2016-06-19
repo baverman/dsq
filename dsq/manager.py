@@ -1,124 +1,61 @@
-from uuid import uuid4
-from base64 import urlsafe_b64encode
-from itertools import islice
 from time import time
+import logging
 
-from redis import StrictRedis
-from msgpack import dumps, loads
+from .utils import attrdict, make_id
 
-QUEUE_KEY = 'queue:{}'
-SCHEDULE_KEY = 'schedule'
-SCHEDULE_ITEM = '{queue}:{task}'
+log = logging.getLogger('dsq.manager')
 
 
-# dup in hope to separate into own project
-class attrdict(dict):
-    __getattr__ = dict.__getitem__
-    __setattr__ = dict.__setitem__
-
-
-def iter_chunks(seq, chunk_size):
-    it = iter(seq)
-    while True:
-        chunk = list(islice(it, chunk_size))
-        if chunk:
-            yield chunk
-        else:
-            break
-
-
-def make_id():
-    return urlsafe_b64encode(uuid4().bytes).rstrip('=')
+def make_task(name, args=None, kwargs=None, meta=None, expire=None):
+    return attrdict(id=make_id(),
+                    name=name,
+                    args=args or (),
+                    kwargs=kwargs or {},
+                    meta=meta or {},
+                    expire=expire)
 
 
 class Manager(object):
-    def __init__(self, url=None, client=None):
-        if client:
-            self.client = client
-        elif url:
-            if not url.startswith('redis://'):
-                url = 'redis://' + url
-            self.client = StrictRedis.from_url(url)
-        else:
-            self.client = StrictRedis()
+    def __init__(self, store, sync=False, unknown='unknown'):
+        self.store = store
+        self.sync = sync
+        self.registry = {}
+        self.unknown = unknown
 
-    def push(self, queue, name, args, kwargs, meta=None, ttl=None, eta=None):
-        assert ':' not in queue, 'Queue name must not contain colon: "{}"'.format(queue)
+    def async(self, name, with_context=False):
+        def decorator(func):
+            self.register(name, func, with_context)
+            return func
+        return decorator
 
-        task_id = make_id()
-        task = {'id': task_id,
-                'name': name,
-                'args': args,
-                'kwargs': kwargs,
-                'meta': meta or {},
-                'expire': ttl and (time() + ttl)}
-        body = dumps(task)
+    def register(self, name, func, with_context=False):
+        if with_context:
+            func._dsq_context = True
+        self.registry[name] = func
 
-        if eta:
-            self.client.zadd(SCHEDULE_KEY, eta, SCHEDULE_ITEM.format(queue=queue, task=body))
-        else:
-            self.client.rpush(QUEUE_KEY.format(queue), body)
-
-        return task_id
-
-    def pop(self, queue_list, timeout=0, now=None):
-        item = self.client.blpop([QUEUE_KEY.format(r) for r in queue_list],
-                                 timeout=timeout)
-        if not item:
+    def apply(self, queue, name, args=(), kwargs={}, meta=None, ttl=None, eta=None):
+        if self.sync:
+            self.registry[name](*args, **kwargs)
             return
 
-        queue, body = item
-        result = attrdict(loads(body))
+        task = make_task(name, args, kwargs, meta=meta, expire=ttl and (time() + ttl))
+        return self.store.push(queue, task, eta=eta)
 
-        if result.expire is not None and (now or time()) > result.expire:
+    def pop(self, queue_list, timeout=None):
+        return attrdict(self.store.pop(queue_list, timeout))
+
+    def process(self, task, now=None):
+        if task.expire is not None and (now or time()) > task.expire:
             return
 
-        result.queue = queue.partition(':')[2]
-        return result
+        try:
+            func = self.registry[task.name]
+        except KeyError:
+            self.store.push(self.unknown, task)
+            log.error('Function for task "%s" not found', task.name)
+            return
 
-    def reschedule(self, now=None):
-        now = now or time()
-        items, _ = (self.client.pipeline()
-                    .zrangebyscore(SCHEDULE_KEY, '-inf', now)
-                    .zremrangebyscore(SCHEDULE_KEY, '-inf', now)
-                    .execute())
-
-        for chunk in iter_chunks(items, 5000):
-            pipe = self.client.pipeline(False)
-            for r in chunk:
-                queue, _, task = r.partition(':')
-                pipe.rpush(QUEUE_KEY.format(queue), task)
-            pipe.execute()
-
-    def take_many(self, count):
-        queues = self.client.keys(QUEUE_KEY.format('*'))
-
-        pipe = self.client.pipeline()
-        pipe.zrange(SCHEDULE_KEY, 0, count - 1, withscores=True)
-        for q in queues:
-            pipe.lrange(q, 0, count - 1)
-
-        pipe.zremrangebyrank(SCHEDULE_KEY, 0, count - 1)
-        for q in queues:
-            pipe.ltrim(q, count, -1)
-
-        cmds = pipe.execute()
-        qresult = {}
-        result = {'schedule': cmds[0], 'queues': qresult}
-        for q, r in zip(queues, cmds[1:]):
-            qname = q.partition(':')[2]
-            qresult[qname] = r
-
-        return result
-
-    def put_many(self, batch):
-        pipe = self.client.pipeline(False)
-
-        sitems = []
-        [sitems.extend((r[1], r[0])) for r in batch['schedule']]
-        pipe.zadd(SCHEDULE_KEY, *sitems)
-
-        for q, items in batch['queues'].iteritems():
-            pipe.rpush(QUEUE_KEY.format(q), *items)
-
-        pipe.execute()
+        if getattr(func, '_dsq_context', None):
+            func(attrdict(manager=self, task=task), *task.args, **task.kwargs)
+        else:
+            func(*task.args, **task.kwargs)
