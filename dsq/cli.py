@@ -1,3 +1,4 @@
+import sys
 import click
 
 manager = None
@@ -6,9 +7,14 @@ manager = None
 @click.group()
 @click.option('-t', '--tasks')
 def cli(tasks):
+    import sys
+    if '.' not in sys.path:
+        sys.path.insert(0, '.')
+
     from .manager import load_manager
     global manager
-    manager = load_manager(tasks)
+    if tasks:
+        manager = load_manager(tasks)
 
 
 @cli.command()

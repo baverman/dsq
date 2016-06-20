@@ -111,7 +111,6 @@ class Manager(object):
                     task.retry -= 1
                 eta = task.retry_delay and (now or time()) + task.retry_delay
                 self.store.push(task.queue, task, eta=eta)
-
-            if task.dead:
+            elif task.dead:
                 task.retry = False
                 self.store.push(task.dead, task)
