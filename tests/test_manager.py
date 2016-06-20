@@ -19,7 +19,7 @@ def manager(request):
 def test_expired_task(manager):
     called = []
 
-    @manager.async('foo')
+    @manager.async()
     def foo():
         called.append(True)
 
@@ -41,7 +41,7 @@ def test_worker_alarm(manager):
         called.append(True)
     signal.signal(signal.SIGALRM, handler)
 
-    @manager.async('foo')
+    @manager.async()
     def foo(sleep):
         time.sleep(sleep)
 
@@ -51,3 +51,34 @@ def test_worker_alarm(manager):
 
     w.process_one(make_task('foo', args=(1.1,)))
     assert called
+
+
+def test_retry_task(manager):
+    @manager.async()
+    def foo():
+        raise Exception()
+
+    t = make_task('foo', retry=True)
+    t.queue = 'test'
+    manager.process(t)
+    assert manager.pop(['test'], 1).name == 'foo'
+
+    t.retry_delay = 10
+    manager.process(t, now=20)
+    assert not manager.pop(['test'], 1)
+    manager.store.reschedule(50)
+    assert manager.pop(['test'], 1).name == 'foo'
+
+    t.retry_delay = None
+    t.retry = 1
+    manager.process(t, now=20)
+    assert manager.pop(['test'], 1).retry == 0
+
+
+def test_dead_task(manager):
+    @manager.async()
+    def foo():
+        raise Exception()
+
+    manager.process(make_task('foo', dead='dead'))
+    assert manager.pop(['dead'], 1).name == 'foo'

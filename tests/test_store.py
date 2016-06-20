@@ -14,18 +14,18 @@ def store(request):
 
 
 def test_push_pop(store):
-    assert not store.pop(['test'], 1)
+    assert store.pop(['test'], 1) == (None, None)
     store.push('test', 't1')
     result = store.pop(['test'], 1)
-    assert result == 't1'
+    assert result == ('test', 't1')
 
 
 def test_reschedule(store):
     store.push('test', 't1', eta=500)
     store.reschedule(now=490)
-    assert not store.pop(['test'], 1)
+    assert store.pop(['test'], 1) == (None, None)
     store.reschedule(now=510)
-    assert store.pop(['test'], 1) == 't1'
+    assert store.pop(['test'], 1)[1] == 't1'
 
 
 def task_names(tasks):
@@ -59,5 +59,5 @@ def test_take_and_put(store):
 
     store.put_many(result)
     store.reschedule(now=50)
-    assert store.pop(['boo', 'foo'], 1) == 'boo3'
-    assert store.pop(['boo', 'foo'], 1) == 'foo3'
+    assert store.pop(['boo', 'foo'], 1)[1] == 'boo3'
+    assert store.pop(['boo', 'foo'], 1)[1] == 'foo3'

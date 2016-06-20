@@ -31,9 +31,9 @@ class Store(object):
         item = self.client.blpop([QUEUE_KEY.format(r) for r in queue_list],
                                  timeout=timeout)
         if not item:
-            return
+            return None, None
 
-        return loads(item[1])
+        return item[0].rpartition(':')[2], loads(item[1])
 
     def reschedule(self, now=None):
         now = now or time()

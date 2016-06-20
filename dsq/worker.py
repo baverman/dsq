@@ -1,4 +1,3 @@
-import sys
 import logging
 import signal
 from time import time
