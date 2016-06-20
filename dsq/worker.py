@@ -6,16 +6,18 @@ from time import time
 log = logging.getLogger(__name__)
 current_task = None
 
+class StopWorker(Exception):
+    pass
+
 
 def alarm_handler(signum, frame):
     log.error('Timeout during processing task {id} {name}({args}, {kwargs})'.format(**current_task))
-    sys.exit(1)
+    raise StopWorker()
 
 
 class Worker(object):
-    def __init__(self, manager, queue_list, lifetime=None, task_timeout=None):
+    def __init__(self, manager, lifetime=None, task_timeout=None):
         self.manager = manager
-        self.queue_list = queue_list
         self.lifetime = lifetime
         self.task_timeout = task_timeout
 
@@ -30,5 +32,18 @@ class Worker(object):
         if self.task_timeout:
             signal.alarm(0)
 
-    def process(manager, queue_list, lifetime, timeout):
-        signal.signal(signal.SIGALRM, alarm_handler)
+    def process(self, queue_list):
+        if self.task_timeout:
+            signal.signal(signal.SIGALRM, alarm_handler)
+
+        start = time()
+        while True:
+            task = self.manager.pop(queue_list, 1)
+            if task:
+                try:
+                    self.process_one(task)
+                except StopWorker:
+                    break
+
+            if self.lifetime and time() - start > self.lifetime:
+                break

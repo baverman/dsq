@@ -10,18 +10,13 @@ SCHEDULE_KEY = 'schedule'
 SCHEDULE_ITEM = '{queue}:{task}'
 
 
-# if not url.startswith('redis://'):
-#     url = 'redis://' + url
-# self.client = StrictRedis.from_url(url)
-
-
 class Store(object):
     def __init__(self, client):
         self.client = client
 
     def push(self, queue, task, eta=None):
         assert ':' not in queue, 'Queue name must not contain colon: "{}"'.format(queue)
-        body = dumps(task)
+        body = dumps(task)  # TODO: may be better to move task packing to manager
         if eta:
             self.client.zadd(SCHEDULE_KEY,
                              eta,
