@@ -33,7 +33,8 @@ def load_manager(module_name):
 
 
 class Task(object):
-    def __init__(self, manager, **kwargs):
+    def __init__(self, manager, func, **kwargs):
+        self.sync = func
         self.manager = manager
         self.ctx = kwargs
 
@@ -43,7 +44,7 @@ class Task(object):
     def modify(self, **kwargs):
         ctx = self.ctx.copy()
         ctx.update(kwargs)
-        return Task(self.manager, **ctx)
+        return Task(self.manager, self.sync, **ctx)
 
 
 class Manager(object):
@@ -57,7 +58,7 @@ class Manager(object):
         def decorator(func):
             fname = tname or func.__name__
             self.register(fname, func, with_context)
-            return Task(self, queue=queue, name=fname)
+            return Task(self, func, queue=queue, name=fname)
 
         if callable(name):
             tname = None

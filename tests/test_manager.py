@@ -118,3 +118,12 @@ def test_task_modification(manager):
     assert task.queue == 'bar'
     assert task.expire
     assert task.dead == 'dead'
+
+
+def test_task_sync(manager):
+    @manager.task
+    def foo(a, b):
+        return a + b
+
+    assert foo.sync(1, 2) == 3
+    assert foo.modify(queue='normal').sync(1, 2) == 3
