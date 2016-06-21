@@ -5,12 +5,13 @@ from time import time
 log = logging.getLogger(__name__)
 current_task = None
 
+
 class StopWorker(Exception):
     pass
 
 
 def alarm_handler(signum, frame):
-    log.error('Timeout during processing task {id} {name}({args}, {kwargs})'.format(**current_task))
+    log.exception('Timeout during processing task {id} {name}({args}, {kwargs})'.format(**current_task))
     raise StopWorker()
 
 
@@ -21,15 +22,14 @@ class Worker(object):
         self.task_timeout = task_timeout
 
     def process_one(self, task):
-        global current_task
-        if self.task_timeout:
-            signal.alarm(self.task_timeout)
+        timeout = task.timeout or self.task_timeout
+        if timeout: signal.alarm(timeout)
 
+        global current_task
         current_task = task
         self.manager.process(task)
 
-        if self.task_timeout:
-            signal.alarm(0)
+        if timeout: signal.alarm(0)
 
     def process(self, queue_list):
         if self.task_timeout:

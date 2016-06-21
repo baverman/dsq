@@ -11,10 +11,10 @@ log = logging.getLogger(__name__)
 
 
 def make_task(name, args=None, kwargs=None, meta=None, expire=None,
-              dead=None, retry=None, retry_delay=None):
+              dead=None, retry=None, retry_delay=None, timeout=None):
     return attrdict(id=make_id(), name=name, args=args or (), kwargs=kwargs or {},
                     meta=meta or {}, expire=expire, dead=dead, retry=retry,
-                    retry_delay=retry_delay)
+                    retry_delay=retry_delay, timeout=timeout)
 
 
 def load_manager(module_name):
@@ -51,8 +51,8 @@ class Manager(object):
             func._dsq_context = True
         self.registry[name] = func
 
-    def apply(self, queue, name, args=(), kwargs={}, meta=None, ttl=None,
-              eta=None, delay=None, dead=None, retry=None, retry_delay=10):
+    def push(self, queue, name, args=(), kwargs={}, meta=None, ttl=None,
+             eta=None, delay=None, dead=None, retry=None, retry_delay=10, timeout=None):
         """Add tasks into queue
 
         :param queue: Queue name.
@@ -66,6 +66,7 @@ class Manager(object):
         :param dead: Name of dead-letter queue.
         :param retry: Retry task execution after exception. True - forever, number - retry this amount.
         :param retry_delay: Delay between retry attemps.
+        :param timeout: Task execution timeout.
         """
         if self.sync:
             self.registry[name](*args, **kwargs)

@@ -65,19 +65,22 @@ class Store(object):
         qresult = {}
         result = {'schedule': cmds[0], 'queues': qresult}
         for q, r in zip(queues, cmds[1:]):
-            qname = q.partition(':')[2]
-            qresult[qname] = r
+            if r:
+                qname = q.partition(':')[2]
+                qresult[qname] = r
 
         return result
 
     def put_many(self, batch):
         pipe = self.client.pipeline(False)
 
-        sitems = []
-        [sitems.extend((r[1], r[0])) for r in batch['schedule']]
-        pipe.zadd(SCHEDULE_KEY, *sitems)
+        if batch['schedule']:
+            sitems = []
+            [sitems.extend((r[1], r[0])) for r in batch['schedule']]
+            pipe.zadd(SCHEDULE_KEY, *sitems)
 
         for q, items in iteritems(batch['queues']):
-            pipe.rpush(QUEUE_KEY.format(q), *items)
+            if items:
+                pipe.rpush(QUEUE_KEY.format(q), *items)
 
         pipe.execute()
