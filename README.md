@@ -1,6 +1,6 @@
 # DSQ
 
-Dead simple queue on redis.
+Dead simple task queue using redis.
 
 ```python
 # tasks.py
@@ -38,13 +38,13 @@ $ dsq worker -t tasks:manager normal
 
 Celery has problems with worker freezes and there is no any tools
 to investigate whats wrong with it. A HUGE codebase leads to numerous bugs.
-Redis is not primary backend and generic interface
-don't allow to use redis effectively.
+Redis is not primary backend and generic interface don't allow to use
+redis effectively.
 
 
 ## Why you don't use RQ
 
-RQ has no delayed tasks. End of story.
+RQ has no delayed tasks.
 
 
 ## Why you don't use ...

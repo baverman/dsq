@@ -7,7 +7,7 @@ setup(
     license='MIT',
     author='Anton Bobrov',
     author_email='baverman@gmail.com',
-    description='Dead simple task queue',
+    description='Dead simple task queue using redis',
     long_description=open('README.md').read(),
     packages=find_packages(exclude=['tests']),
     include_package_data=True,
