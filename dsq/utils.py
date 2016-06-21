@@ -5,7 +5,7 @@ from itertools import islice
 
 def make_id():
     """Make uniq short id"""
-    return urlsafe_b64encode(uuid4().bytes).rstrip('=')
+    return urlsafe_b64encode(uuid4().bytes).rstrip(b'=')
 
 
 class attrdict(dict):

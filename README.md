@@ -7,7 +7,7 @@ Dead simple task queue using redis.
 from dsq import create_manager
 manager = create_manager()
 
-@manager.async(queue='normal')
+@manager.task(queue='normal')
 def add(a, b):
     print a + b
 

@@ -3,11 +3,30 @@ from time import time
 from msgpack import dumps, loads
 
 from .utils import iter_chunks
-from .compat import iteritems
+from .compat import iteritems, PY2, string_types
 
-QUEUE_KEY = 'queue:{}'
 SCHEDULE_KEY = 'schedule'
-SCHEDULE_ITEM = '{queue}:{task}'
+
+if PY2:
+    def qname(name):
+        return name.rpartition(':')[2]
+
+    def sitem(queue, task):
+        return '{}:{}'.format(queue, task)
+
+    def rqname(name):
+        return 'queue:{}'.format(name)
+else:
+    def qname(name):
+        return name.rpartition(b':')[2].decode('utf-8')
+
+    def sitem(queue, task):
+        return queue.encode('utf-8') + b':' + task
+
+    def rqname(name):
+        if isinstance(name, string_types):
+            name = name.encode('utf-8')
+        return b'queue:' + name
 
 
 class Store(object):
@@ -18,22 +37,20 @@ class Store(object):
         assert ':' not in queue, 'Queue name must not contain colon: "{}"'.format(queue)
         body = dumps(task, use_bin_type=True)  # TODO: may be better to move task packing to manager
         if eta:
-            self.client.zadd(SCHEDULE_KEY,
-                             eta,
-                             SCHEDULE_ITEM.format(queue=queue, task=body))
+            self.client.zadd(SCHEDULE_KEY, eta, sitem(queue, body))
         else:
-            self.client.rpush(QUEUE_KEY.format(queue), body)
+            self.client.rpush(rqname(queue), body)
 
     def pop(self, queue_list, timeout=None, now=None):
         if timeout is None:
             timeout = 0
 
-        item = self.client.blpop([QUEUE_KEY.format(r) for r in queue_list],
+        item = self.client.blpop([rqname(r) for r in queue_list],
                                  timeout=timeout)
         if not item:
             return None, None
 
-        return item[0].rpartition(':')[2], loads(item[1], encoding='utf-8')
+        return qname(item[0]), loads(item[1], encoding='utf-8')
 
     def reschedule(self, now=None):
         now = now or time()
@@ -45,12 +62,12 @@ class Store(object):
         for chunk in iter_chunks(items, 5000):
             pipe = self.client.pipeline(False)
             for r in chunk:
-                queue, _, task = r.partition(':')
-                pipe.rpush(QUEUE_KEY.format(queue), task)
+                queue, _, task = r.partition(b':')
+                pipe.rpush(rqname(queue), task)
             pipe.execute()
 
     def take_many(self, count):
-        queues = self.client.keys(QUEUE_KEY.format('*'))
+        queues = self.client.keys(rqname('*'))
 
         pipe = self.client.pipeline()
         pipe.zrange(SCHEDULE_KEY, 0, count - 1, withscores=True)
@@ -66,8 +83,7 @@ class Store(object):
         result = {'schedule': cmds[0], 'queues': qresult}
         for q, r in zip(queues, cmds[1:]):
             if r:
-                qname = q.partition(':')[2]
-                qresult[qname] = r
+                qresult[qname(q)] = r
 
         return result
 
@@ -81,6 +97,23 @@ class Store(object):
 
         for q, items in iteritems(batch['queues']):
             if items:
-                pipe.rpush(QUEUE_KEY.format(q), *items)
+                pipe.rpush(rqname(q), *items)
 
         pipe.execute()
+
+    def dump(self):
+        queues = self.client.keys(rqname('*'))
+
+        pipe = self.client.pipeline()
+        pipe.zrange(SCHEDULE_KEY, 0, -1, withscores=True)
+        for q in queues:
+            pipe.lrange(q, 0, -1)
+
+        cmds = pipe.execute()
+        qresult = {}
+        result = {'schedule': cmds[0], 'queues': qresult}
+        for q, r in zip(queues, cmds[1:]):
+            if r:
+                qresult[qname(q)] = r
+
+        return result

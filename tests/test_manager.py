@@ -19,7 +19,7 @@ def manager(request):
 def test_expired_task(manager):
     called = []
 
-    @manager.async()
+    @manager.task
     def foo():
         called.append(True)
 
@@ -41,7 +41,7 @@ def test_worker_alarm(manager):
         called.append(True)
     signal.signal(signal.SIGALRM, handler)
 
-    @manager.async()
+    @manager.task
     def foo(sleep):
         time.sleep(sleep)
 
@@ -54,7 +54,7 @@ def test_worker_alarm(manager):
 
 
 def test_retry_task(manager):
-    @manager.async()
+    @manager.task
     def foo():
         raise Exception()
 
@@ -76,9 +76,45 @@ def test_retry_task(manager):
 
 
 def test_dead_task(manager):
-    @manager.async()
+    @manager.task
     def foo():
         raise Exception()
 
     manager.process(make_task('foo', dead='dead'))
     assert manager.pop(['dead'], 1).name == 'foo'
+
+
+def test_task_calling(manager):
+    @manager.task(queue='test')
+    def foo(bar, boo):
+        assert bar == 'bar'
+        assert boo == 'boo'
+        foo.called = True
+
+    foo('bar', boo='boo')
+    task = manager.pop(['test'], 1)
+    manager.process(task)
+    assert foo.called
+
+
+def test_string_types(manager):
+    @manager.task(queue='test')
+    def foo(bstr, ustr):
+        assert type(bstr) == type(b'')
+        assert type(ustr) == type(u'')
+
+    foo(b'boo', u'boo')
+    task = manager.pop(['test'], 1)
+    manager.process(task)
+
+
+def test_task_modification(manager):
+    @manager.task
+    def foo():
+        pass
+
+    foo.modify(queue='bar', ttl=10, dead='dead')()
+    task = manager.pop(['bar'], 1)
+    assert task.queue == 'bar'
+    assert task.expire
+    assert task.dead == 'dead'

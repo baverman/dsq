@@ -32,6 +32,20 @@ def load_manager(module_name):
     return manager
 
 
+class Task(object):
+    def __init__(self, manager, **kwargs):
+        self.manager = manager
+        self.ctx = kwargs
+
+    def __call__(self, *args, **kwargs):
+        self.manager.push(args=args, kwargs=kwargs, **self.ctx)
+
+    def modify(self, **kwargs):
+        ctx = self.ctx.copy()
+        ctx.update(kwargs)
+        return Task(self.manager, **ctx)
+
+
 class Manager(object):
     def __init__(self, store, sync=False, unknown=None):
         self.store = store
@@ -39,11 +53,17 @@ class Manager(object):
         self.registry = {}
         self.unknown = unknown or 'unknown'
 
-    def async(self, name=None, with_context=False):
+    def task(self, name=None, queue='dsq', with_context=False):
         def decorator(func):
-            fname = name or func.__name__
+            fname = tname or func.__name__
             self.register(fname, func, with_context)
-            return func
+            return Task(self, queue=queue, name=fname)
+
+        if callable(name):
+            tname = None
+            return decorator(name)
+
+        tname = name
         return decorator
 
     def register(self, name, func, with_context=False):

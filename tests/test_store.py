@@ -33,7 +33,7 @@ def task_names(tasks):
 
 
 def stask_names(tasks):
-    return [msgpack.loads(r[0].partition(':')[2]) for r in tasks]
+    return [msgpack.loads(r[0].partition(b':')[2]) for r in tasks]
 
 
 def test_take_and_put(store):
@@ -48,13 +48,13 @@ def test_take_and_put(store):
     store.push('foo', 'foo3', eta=20)
 
     result = store.take_many(2)
-    assert stask_names(result['schedule']) == ['boo4', 'boo5']
-    assert task_names(result['queues']['boo']) == ['boo1', 'boo2']
-    assert task_names(result['queues']['foo']) == ['foo1', 'foo2']
+    assert stask_names(result['schedule']) == [b'boo4', b'boo5']
+    assert task_names(result['queues']['boo']) == [b'boo1', b'boo2']
+    assert task_names(result['queues']['foo']) == [b'foo1', b'foo2']
 
     result = store.take_many(10)
-    assert stask_names(result['schedule']) == ['foo3']
-    assert task_names(result['queues']['boo']) == ['boo3']
+    assert stask_names(result['schedule']) == [b'foo3']
+    assert task_names(result['queues']['boo']) == [b'boo3']
     assert 'foo' not in result['queues']
 
     store.put_many(result)
