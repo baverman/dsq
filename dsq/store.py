@@ -16,7 +16,7 @@ class Store(object):
 
     def push(self, queue, task, eta=None):
         assert ':' not in queue, 'Queue name must not contain colon: "{}"'.format(queue)
-        body = dumps(task)  # TODO: may be better to move task packing to manager
+        body = dumps(task, use_bin_type=True)  # TODO: may be better to move task packing to manager
         if eta:
             self.client.zadd(SCHEDULE_KEY,
                              eta,
@@ -33,7 +33,7 @@ class Store(object):
         if not item:
             return None, None
 
-        return item[0].rpartition(':')[2], loads(item[1])
+        return item[0].rpartition(':')[2], loads(item[1], encoding='utf-8')
 
     def reschedule(self, now=None):
         now = now or time()
