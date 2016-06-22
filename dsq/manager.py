@@ -90,7 +90,7 @@ class Manager(object):
         :param timeout: Task execution timeout.
         """
         if self.sync:
-            self.registry[name](*args, **kwargs)
+            self.process(make_task(name, args, kwargs, meta=meta))
             return
 
         if delay:

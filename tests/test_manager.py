@@ -127,3 +127,14 @@ def test_task_sync(manager):
 
     assert foo.sync(1, 2) == 3
     assert foo.modify(queue='normal').sync(1, 2) == 3
+
+
+def test_sync_manager(manager):
+    manager.sync = True
+    @manager.task
+    def foo(a, b):
+        foo.called = True
+        assert a + b == 3
+
+    foo(1, 2)
+    assert foo.called
