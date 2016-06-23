@@ -41,8 +41,10 @@ def worker(tasks, lifetime, task_timeout, queue):
 def scheduler(tasks):
     '''Schedule delayed tasks into execution queues.'''
     from .manager import load_manager
+    from .utils import RunFlag
     manager = load_manager(tasks)
-    while True:
+    run = RunFlag()
+    while run:
         manager.store.reschedule()
         time.sleep(1)
 
@@ -57,12 +59,14 @@ def forwarder(tasks, interval, batch_size, source, dest):
     '''Forward items from one storage to another.'''
     from . import create_store
     from .manager import load_manager
+    from .utils import RunFlag
     log = logging.getLogger('dsq.forwarder')
     manager = load_manager(tasks)
 
     s = create_store(source) if source else manager.store
     d = create_store(dest)
-    while True:
+    run = RunFlag()
+    while run:
         batch = s.take_many(batch_size)
         if batch['schedule'] or batch['queues']:
             try:

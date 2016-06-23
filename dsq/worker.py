@@ -3,22 +3,13 @@ import logging
 import signal
 from time import time
 
+from .utils import RunFlag
+
 log = logging.getLogger(__name__)
 
 
 class StopWorker(Exception):
     pass
-
-
-class RunFlag(object):
-    def __init__(self):
-        self._flag = True
-
-    def __nonzero__(self):
-        return self._flag
-
-    def stop(self):
-        self._flag = False
 
 
 class Worker(object):
@@ -47,11 +38,6 @@ class Worker(object):
         signal.signal(signal.SIGALRM, self.alarm_handler)
 
         run = RunFlag()
-        def stop_handler(signal, frame):
-            run.stop()
-        signal.signal(signal.SIGINT, stop_handler)
-        signal.signal(signal.SIGTERM, stop_handler)
-
         start = time()
         while run:
             task = self.manager.pop(queue_list, 1)
