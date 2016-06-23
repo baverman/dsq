@@ -9,6 +9,18 @@ log = logging.getLogger(__name__)
 class StopWorker(Exception):
     pass
 
+
+class RunFlag(object):
+    def __init__(self):
+        self._flag = True
+
+    def __nonzero__(self):
+        return self._flag
+
+    def stop(self):
+        self._flag = False
+
+
 class Worker(object):
     def __init__(self, manager, lifetime=None, task_timeout=None):
         self.manager = manager
@@ -34,8 +46,14 @@ class Worker(object):
     def process(self, queue_list):
         signal.signal(signal.SIGALRM, self.alarm_handler)
 
+        run = RunFlag()
+        def stop_handler(signal, frame):
+            run.stop()
+        signal.signal(signal.SIGINT, stop_handler)
+        signal.signal(signal.SIGTERM, stop_handler)
+
         start = time()
-        while True:
+        while run:
             task = self.manager.pop(queue_list, 1)
             if task:
                 try:
