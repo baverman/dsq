@@ -54,11 +54,11 @@ class Manager(object):
         self.registry = {}
         self.unknown = unknown or 'unknown'
 
-    def task(self, name=None, queue='dsq', with_context=False):
+    def task(self, name=None, queue='dsq', with_context=False, **kwargs):
         def decorator(func):
             fname = tname or func.__name__
             self.register(fname, func, with_context)
-            return Task(self, func, queue=queue, name=fname)
+            return Task(self, func, queue=queue, name=fname, **kwargs)
 
         if callable(name):
             tname = None
@@ -97,7 +97,7 @@ class Manager(object):
             eta = time() + delay
 
         task = make_task(name, args, kwargs, meta=meta, expire=ttl and (time() + ttl),
-                         dead=dead, retry=retry, retry_delay=retry_delay)
+                         dead=dead, retry=retry, retry_delay=retry_delay, timeout=timeout)
         return self.store.push(queue, task, eta=eta)
 
     def pop(self, queue_list, timeout=None):
