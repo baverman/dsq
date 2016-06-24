@@ -8,6 +8,8 @@ import click
 def cli():
     if '.' not in sys.path:
         sys.path.insert(0, '.')
+    import dsq
+    dsq._is_main = True
 
 
 tasks_help=('Task module. By default dsq searches `app` '
