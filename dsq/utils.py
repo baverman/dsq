@@ -3,6 +3,8 @@ from uuid import uuid4
 from base64 import urlsafe_b64encode
 from itertools import islice
 
+from redis import StrictRedis
+
 
 def make_id():
     """Make uniq short id"""
@@ -38,3 +40,12 @@ class RunFlag(object):
 
     def handler(self, signal, frame):
         self.stop()
+
+
+def redis_client(url):
+    if url:
+        if not url.startswith('redis://'):
+            url = 'redis://' + url
+        return StrictRedis.from_url(url)
+    else:
+        return StrictRedis()

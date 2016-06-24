@@ -1,23 +1,27 @@
+from .manager import Manager
+from .store import Store
+from .utils import redis_client
+
 _is_main = False
 
 
-def create_store(url=None):
-    from redis import StrictRedis
-    from .store import Store
-
-    if url:
-        if not url.startswith('redis://'):
-            url = 'redis://' + url
-        cl = StrictRedis.from_url(url)
-    else:
-        cl = StrictRedis()
-
-    return Store(cl)
-
-
 def create_manager(url=None, sync=False, unknown=None):
-    from .manager import Manager
-    return Manager(create_store(url), sync, unknown)
+    '''Creates dsq manager
+
+    :param url: Redis url. [redis://]host[:port]/dbnum.
+    :param sync: Synchronous operation. Manager.push invokes
+                 task immediately.
+    :param unknown: Name of unknown queue.
+
+    ::
+
+       manager = create_manager()
+
+       @manager.task(queue='high', keep_result=600)
+       def add(a, b):
+           return a + b
+    '''
+    return Manager(Store(redis_client(url)), sync, unknown)
 
 
 def is_main():

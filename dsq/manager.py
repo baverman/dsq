@@ -113,6 +113,8 @@ class Manager(object):
         try:
             func = self.registry[task.name]
         except KeyError:
+            if self.sync:
+                raise
             self.store.push(self.unknown, task)
             log.error('Function for task "%s" not found', task.name)
             return
@@ -125,6 +127,9 @@ class Manager(object):
         except StopWorker:
             raise
         except:
+            if self.sync:
+                raise
+
             if log_exc:
                 log.exception('Error during processing task {id} {name}({args}, {kwargs})'.format(**task))
 
