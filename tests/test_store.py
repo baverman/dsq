@@ -58,6 +58,7 @@ def test_take_and_put(store):
     assert 'foo' not in result['queues']
 
     store.put_many(result)
-    store.reschedule(now=50)
-    assert store.pop(['boo', 'foo'], 1)[1] == 'boo3'
-    assert store.pop(['boo', 'foo'], 1)[1] == 'foo3'
+    dump = store.dump()
+    assert stask_names(dump['schedule']) == [b'foo3']
+    assert task_names(dump['queues']['boo']) == [b'boo3']
+    assert dump['schedule'][0][1] == 20

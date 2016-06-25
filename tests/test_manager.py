@@ -3,10 +3,11 @@ import signal
 
 import pytest
 import redis
+import msgpack
 
 from dsq.store import Store
 from dsq.manager import Manager, make_task
-from dsq.worker import Worker
+from dsq.worker import Worker, StopWorker
 
 
 @pytest.fixture
@@ -14,6 +15,10 @@ def manager(request):
     cl = redis.StrictRedis()
     cl.flushdb()
     return Manager(Store(cl))
+
+
+def task_names(tasks):
+    return [msgpack.loads(r)['name'] for r in tasks]
 
 
 def test_expired_task(manager):
@@ -131,6 +136,7 @@ def test_task_sync(manager):
 
 def test_sync_manager(manager):
     manager.sync = True
+
     @manager.task
     def foo(a, b):
         foo.called = True
@@ -138,3 +144,43 @@ def test_sync_manager(manager):
 
     foo(1, 2)
     assert foo.called
+
+    with pytest.raises(KeyError):
+        manager.process(make_task('boo'))
+
+    @manager.task
+    def bad():
+        raise ZeroDivisionError()
+
+    with pytest.raises(ZeroDivisionError):
+        bad()
+
+
+def test_task_with_context(manager):
+    manager.sync = True
+    @manager.task(with_context=True)
+    def foo(ctx, a, b):
+        foo.called = True
+        assert ctx.manager is manager
+        assert ctx.task.name == 'foo'
+        assert ctx
+        assert a + b == 3
+
+    foo(1, 2)
+    assert foo.called
+
+
+def test_delayed_task(manager):
+    now = time.time()
+    manager.push('test', 'foo', delay=10)
+    result = manager.store.dump()
+    assert now + 9 < result['schedule'][0][1] < now + 11
+
+
+def test_manager_must_pass_stop_worker_exc(manager):
+    @manager.task
+    def alarm():
+        raise StopWorker()
+
+    with pytest.raises(StopWorker):
+        manager.process(make_task('alarm'))

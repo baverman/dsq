@@ -3,3 +3,4 @@
 /tasks.py
 *,cover
 .coverage
+/htmlcov
