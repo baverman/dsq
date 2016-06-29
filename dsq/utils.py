@@ -6,7 +6,7 @@ from itertools import islice
 from redis import StrictRedis
 
 
-def make_id():
+def make_id():  # pragma: no cover
     """Make uniq short id"""
     return urlsafe_b64encode(uuid4().bytes).rstrip(b'=')
 
@@ -16,7 +16,7 @@ class attrdict(dict):
     __setattr__ = dict.__setitem__
 
 
-def iter_chunks(seq, chunk_size):
+def iter_chunks(seq, chunk_size):  # pragma: no cover
     it = iter(seq)
     while True:
         chunk = list(islice(it, chunk_size))
@@ -26,7 +26,7 @@ def iter_chunks(seq, chunk_size):
             break
 
 
-class RunFlag(object):
+class RunFlag(object):  # pragma: no cover
     def __init__(self):
         self._flag = True
         signal.signal(signal.SIGINT, self.handler)
@@ -42,7 +42,7 @@ class RunFlag(object):
         self.stop()
 
 
-def redis_client(url):
+def redis_client(url):  # pragma: no cover
     if url:
         if not url.startswith('redis://'):
             url = 'redis://' + url

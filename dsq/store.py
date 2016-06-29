@@ -16,7 +16,7 @@ if PY2:
 
     def rqname(name):
         return 'queue:{}'.format(name)
-else:
+else:  # pragma: no cover
     def qname(name):
         return name.rpartition(b':')[2].decode('utf-8')
 
@@ -42,7 +42,7 @@ class Store(object):
             self.client.rpush(rqname(queue), body)
 
     def pop(self, queue_list, timeout=None, now=None):
-        if timeout is None:
+        if timeout is None:  # pragma: no cover
             timeout = 0
 
         item = self.client.blpop([rqname(r) for r in queue_list],

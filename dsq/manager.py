@@ -17,7 +17,7 @@ def make_task(name, args=None, kwargs=None, meta=None, expire=None,
                     retry_delay=retry_delay, timeout=timeout)
 
 
-def load_manager(module_name):
+def load_manager(module_name):  # pragma: no cover
     module_name, _, mvar = module_name.partition(':')
     if not mvar:
         mvar = 'app'

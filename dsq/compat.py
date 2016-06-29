@@ -2,7 +2,7 @@ import sys
 
 PY2 = sys.version_info[0] == 2
 
-if PY2:
+if PY2:  # pragma: no cover
     import __builtin__ as builtins
     range = builtins.xrange
     reduce = builtins.reduce
@@ -14,7 +14,7 @@ if PY2:
     listkeys = lambda d: d.keys()
     listvalues = lambda d: d.values()
     listitems = lambda d: d.items()
-else:
+else:  # pragma: no cover
     import builtins
     from functools import reduce
     range = builtins.range

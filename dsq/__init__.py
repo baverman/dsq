@@ -5,7 +5,7 @@ from .utils import redis_client
 _is_main = False
 
 
-def create_manager(url=None, sync=False, unknown=None):
+def create_manager(url=None, sync=False, unknown=None):  # pragma: no cover
     '''Creates dsq manager
 
     :param url: Redis url. [redis://]host[:port]/dbnum.
@@ -24,7 +24,7 @@ def create_manager(url=None, sync=False, unknown=None):
     return Manager(Store(redis_client(url)), sync, unknown)
 
 
-def is_main():
+def is_main():  # pragma: no cover
     '''Returns True if dsq command is in progress
 
     May be useful for tasks module which imports
