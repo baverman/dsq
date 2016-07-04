@@ -7,7 +7,7 @@ from .compat import iteritems, PY2, string_types
 
 SCHEDULE_KEY = 'schedule'
 
-if PY2:
+if PY2:  # pragma: no cover
     def qname(name):
         return name.rpartition(':')[2]
 

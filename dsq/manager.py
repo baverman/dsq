@@ -86,7 +86,7 @@ class Manager(object):
         :param delay: Postpone task execution for particular amount of seconds.
         :param dead: Name of dead-letter queue.
         :param retry: Retry task execution after exception. True - forever, number - retry this amount.
-        :param retry_delay: Delay between retry attemps.
+        :param retry_delay: Delay between retry attempts.
         :param timeout: Task execution timeout.
         """
         if self.sync:

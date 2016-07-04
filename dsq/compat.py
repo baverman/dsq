@@ -14,6 +14,13 @@ if PY2:  # pragma: no cover
     listkeys = lambda d: d.keys()
     listvalues = lambda d: d.values()
     listitems = lambda d: d.items()
+
+    def bytestr(data, encoding='utf-8'):
+        if isinstance(data, unicode):
+            data = data.encode(encoding)
+
+        return data
+
 else:  # pragma: no cover
     import builtins
     from functools import reduce
@@ -26,3 +33,9 @@ else:  # pragma: no cover
     listkeys = lambda d: list(d.keys())
     listvalues = lambda d: list(d.values())
     listitems = lambda d: list(d.items())
+
+    def bytestr(data, encoding='utf-8'):
+        if isinstance(data, str):
+            data = data.encode(encoding)
+
+        return data
