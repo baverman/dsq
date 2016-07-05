@@ -20,7 +20,6 @@ if PY2:  # pragma: no cover
             data = data.encode(encoding)
 
         return data
-
 else:  # pragma: no cover
     import builtins
     from functools import reduce

@@ -5,7 +5,7 @@ python:
   - "3.5"
   - "pypy"
 install: "pip install -r requirements.txt"
-script: py.test --cov dsq --cov-report term-missing
+script: py.test --cov dsq --cov-report term-missing --cov-fail-under=100
 services:
   - redis-server
 cache:

@@ -9,8 +9,8 @@ Dead simple task queue using redis.
 .. code:: python
 
     # tasks.py
-    from dsq import create_manager
-    manager = create_manager()
+    import dsq
+    manager = dsq.create_manager()
 
     @manager.task(queue='normal')
     def add(a, b):
@@ -37,7 +37,8 @@ Features
 * Task forwarder from one redis instance to another.
 * HTTP interface.
 * Inspect tools.
-* Supports 2.7, 3.4, 3.5 and pypy.
+* Supports 2.7, 3.4, 3.5 and PyPy.
+* 100% test coverage.
 
 
 Why you don't use celery

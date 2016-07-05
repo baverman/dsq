@@ -1,5 +1,5 @@
 from .manager import Manager
-from .store import Store
+from .store import QueueStore
 from .utils import redis_client
 
 _is_main = False
@@ -21,7 +21,7 @@ def create_manager(url=None, sync=False, unknown=None):  # pragma: no cover
        def add(a, b):
            return a + b
     '''
-    return Manager(Store(redis_client(url)), sync, unknown)
+    return Manager(QueueStore(redis_client(url)), sync, unknown)
 
 
 def is_main():  # pragma: no cover

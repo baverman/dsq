@@ -29,7 +29,7 @@ else:  # pragma: no cover
         return b'queue:' + name
 
 
-class Store(object):
+class QueueStore(object):
     def __init__(self, client):
         self.client = client
 
@@ -117,3 +117,16 @@ class Store(object):
                 qresult[qname(q)] = r
 
         return result
+
+
+class ResultStore(object):
+    def __init__(self, client):
+        self.client = client
+
+    def set(self, id, value, ttl):
+        self.client.set(id, dumps(value, use_bin_type=True), ttl)
+
+    def get(self, id):
+        value = self.client.get(id)
+        if value is not None:
+            return loads(value, encoding='utf-8')

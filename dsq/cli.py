@@ -32,7 +32,7 @@ def worker(tasks, lifetime, task_timeout, queue):
 
     Allows to handle tasks from `high` queue first.
     '''
-    from .manager import load_manager
+    from .utils import load_manager
     from .worker import Worker
     worker = Worker(load_manager(tasks), lifetime, task_timeout)
     worker.process(queue)
@@ -42,12 +42,11 @@ def worker(tasks, lifetime, task_timeout, queue):
 @click.option('-t', '--tasks', required=True, help=tasks_help)
 def scheduler(tasks):
     '''Schedule delayed tasks into execution queues.'''
-    from .manager import load_manager
-    from .utils import RunFlag
+    from .utils import RunFlag, load_manager
     manager = load_manager(tasks)
     run = RunFlag()
     while run:
-        manager.store.reschedule()
+        manager.queue.reschedule()
         time.sleep(1)
 
 
@@ -59,14 +58,13 @@ def scheduler(tasks):
 @click.argument('dest')
 def forwarder(tasks, interval, batch_size, source, dest):
     '''Forward items from one storage to another.'''
-    from . import create_store
-    from .manager import load_manager
-    from .utils import RunFlag
+    from .utils import RunFlag, load_manager, redis_client
+    from .store import QueueStore
     log = logging.getLogger('dsq.forwarder')
     manager = load_manager(tasks)
 
-    s = create_store(source) if source else manager.store
-    d = create_store(dest)
+    s = QueueStore(redis_client(source)) if source else manager.queue
+    d = QueueStore(redis_client(dest))
     run = RunFlag()
     while run:
         batch = s.take_many(batch_size)

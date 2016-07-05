@@ -1,35 +1,20 @@
 from __future__ import print_function
 
-import sys
 from time import time
 import logging
 
 from .utils import attrdict, make_id
 from .worker import StopWorker
+from .compat import PY2
 
 log = logging.getLogger(__name__)
 
 
 def make_task(name, args=None, kwargs=None, meta=None, expire=None,
-              dead=None, retry=None, retry_delay=None, timeout=None):
+              dead=None, retry=None, retry_delay=None, timeout=None, keep_result=None):
     return attrdict(id=make_id(), name=name, args=args or (), kwargs=kwargs or {},
                     meta=meta or {}, expire=expire, dead=dead, retry=retry,
-                    retry_delay=retry_delay, timeout=timeout)
-
-
-def load_manager(module_name):  # pragma: no cover
-    module_name, _, mvar = module_name.partition(':')
-    if not mvar:
-        mvar = 'app'
-
-    __import__(module_name)
-    module = sys.modules[module_name]
-    manager = getattr(module, mvar, None)
-    if not manager:
-        print('{} not found in {}'.format(mvar, module_name))
-        sys.exit(1)
-
-    return manager
+                    retry_delay=retry_delay, timeout=timeout, keep_result=keep_result)
 
 
 class Task(object):
@@ -48,8 +33,9 @@ class Task(object):
 
 
 class Manager(object):
-    def __init__(self, store, sync=False, unknown=None):
-        self.store = store
+    def __init__(self, queue, result=None, sync=False, unknown=None):
+        self.queue = queue
+        self.result = result
         self.sync = sync
         self.registry = {}
         self.unknown = unknown or 'unknown'
@@ -73,7 +59,8 @@ class Manager(object):
         self.registry[name] = func
 
     def push(self, queue, name, args=(), kwargs={}, meta=None, ttl=None,
-             eta=None, delay=None, dead=None, retry=None, retry_delay=10, timeout=None):
+             eta=None, delay=None, dead=None, retry=None, retry_delay=10,
+             timeout=None, keep_result=None):
         """Add tasks into queue
 
         :param queue: Queue name.
@@ -97,11 +84,13 @@ class Manager(object):
             eta = time() + delay
 
         task = make_task(name, args, kwargs, meta=meta, expire=ttl and (time() + ttl),
-                         dead=dead, retry=retry, retry_delay=retry_delay, timeout=timeout)
-        return self.store.push(queue, task, eta=eta)
+                         dead=dead, retry=retry, retry_delay=retry_delay,
+                         timeout=timeout, keep_result=keep_result)
+        self.queue.push(queue, task, eta=eta)
+        return task.id if PY2 else task.id.decode()
 
     def pop(self, queue_list, timeout=None):
-        queue, task = self.store.pop(queue_list, timeout)
+        queue, task = self.queue.pop(queue_list, timeout)
         if task:
             task['queue'] = queue
             return attrdict(task)
@@ -115,15 +104,19 @@ class Manager(object):
         except KeyError:
             if self.sync:
                 raise
-            self.store.push(self.unknown, task)
+            self.queue.push(self.unknown, task)
             log.error('Function for task "%s" not found', task.name)
             return
 
         try:
             if getattr(func, '_dsq_context', None):
-                func(attrdict(manager=self, task=task), *task.args, **task.kwargs)
+                result = func(attrdict(manager=self, task=task), *task.args, **task.kwargs)
             else:
-                func(*task.args, **task.kwargs)
+                result = func(*task.args, **task.kwargs)
+
+            if task.get('keep_result'):
+                self.result.set(task.id, result, task.keep_result)
+
         except StopWorker:
             raise
         except:
@@ -137,7 +130,7 @@ class Manager(object):
                 if task.retry is not True:
                     task.retry -= 1
                 eta = task.retry_delay and (now or time()) + task.retry_delay
-                self.store.push(task.queue, task, eta=eta)
+                self.queue.push(task.queue, task, eta=eta)
             elif task.dead:
                 task.retry = False
-                self.store.push(task.dead, task)
+                self.queue.push(task.dead, task)

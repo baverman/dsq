@@ -5,7 +5,7 @@ import pytest
 import redis
 import msgpack
 
-from dsq.store import Store
+from dsq.store import QueueStore, ResultStore
 from dsq.manager import Manager, make_task
 from dsq.worker import Worker, StopWorker
 
@@ -14,7 +14,7 @@ from dsq.worker import Worker, StopWorker
 def manager(request):
     cl = redis.StrictRedis()
     cl.flushdb()
-    return Manager(Store(cl))
+    return Manager(QueueStore(cl), ResultStore(cl))
 
 
 def task_names(tasks):
@@ -71,7 +71,7 @@ def test_retry_task(manager):
     t.retry_delay = 10
     manager.process(t, now=20)
     assert not manager.pop(['test'], 1)
-    manager.store.reschedule(50)
+    manager.queue.reschedule(50)
     assert manager.pop(['test'], 1).name == 'foo'
 
     t.retry_delay = None
@@ -173,7 +173,7 @@ def test_task_with_context(manager):
 def test_delayed_task(manager):
     now = time.time()
     manager.push('test', 'foo', delay=10)
-    result = manager.store.dump()
+    result = manager.queue.dump()
     assert now + 9 < result['schedule'][0][1] < now + 11
 
 
@@ -184,3 +184,13 @@ def test_manager_must_pass_stop_worker_exc(manager):
 
     with pytest.raises(StopWorker):
         manager.process(make_task('alarm'))
+
+
+def test_get_result(manager):
+    @manager.task
+    def task():
+        return 'result'
+
+    tid = manager.push('normal', 'task', keep_result=10)
+    manager.process(manager.pop(['normal'], 1))
+    assert manager.result.get(tid) == 'result'

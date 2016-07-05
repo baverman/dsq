@@ -3,14 +3,14 @@ import pytest
 import redis
 import msgpack
 
-from dsq.store import Store
+from dsq.store import QueueStore
 
 
 @pytest.fixture
 def store(request):
     cl = redis.StrictRedis()
     cl.flushdb()
-    return Store(cl)
+    return QueueStore(cl)
 
 
 def test_push_pop(store):

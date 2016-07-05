@@ -1,3 +1,4 @@
+import sys
 import signal
 from uuid import uuid4
 from base64 import urlsafe_b64encode
@@ -49,3 +50,38 @@ def redis_client(url):  # pragma: no cover
         return StrictRedis.from_url(url)
     else:
         return StrictRedis()
+
+
+class LoadError(Exception):
+    def __init__(self, var, module):
+        self.var = var
+        self.module = module
+
+
+def load_var(module_name, default_var='app'):
+    """Loads variable from a module
+
+    :param module_name: module.name or module.name:var
+    :param default_var: default var name
+    :raises ImportError: if module can't be imported
+    :raises LoadError: if module has no var
+    """
+    module_name, _, mvar = module_name.partition(':')
+    if not mvar:
+        mvar = default_var
+
+    __import__(module_name)
+    module = sys.modules[module_name]
+    manager = getattr(module, mvar, None)
+    if not manager:
+        raise LoadError(mvar, module_name)
+
+    return manager
+
+
+def load_manager(module_name):  # pragma: no cover
+    try:
+        return load_var(module_name)
+    except LoadError as e:
+        print('{} not found in {}'.format(e.var, e.module))
+        sys.exit(1)
