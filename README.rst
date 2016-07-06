@@ -1,25 +1,30 @@
-# DSQ
+DSQ
+===
+
+.. image:: https://travis-ci.org/baverman/dsq.svg?branch=master
+   :target: https://travis-ci.org/baverman/dsq
 
 Dead simple task queue using redis.
 
-```python
-# tasks.py
-from dsq import create_manager
-manager = create_manager()
+.. code:: python
 
-@manager.task(queue='normal')
-def add(a, b):
-    print a + b
+    # tasks.py
+    from dsq import create_manager
+    manager = create_manager()
 
-add(1, 2)
-```
+    @manager.task(queue='normal')
+    def add(a, b):
+        print a + b
 
-```bash
-$ dsq worker -t tasks:manager normal
-```
+    add(1, 2)
+
+.. code:: bash
+
+    $ dsq worker -t tasks:manager normal
 
 
-## Features
+Features
+--------
 
 * Low latency.
 * Expiring tasks (TTL).
@@ -32,9 +37,11 @@ $ dsq worker -t tasks:manager normal
 * Task forwarder from one redis instance to another.
 * HTTP interface.
 * Inspect tools.
+* Supports 2.7, 3.4, 3.5 and pypy.
 
 
-## Why you don't use celery
+Why you don't use celery
+------------------------
 
 Celery has problems with worker freezes and there is no any tools
 to investigate whats wrong with it. A HUGE codebase leads to numerous bugs.
@@ -42,12 +49,14 @@ Redis is not primary backend and generic interface don't allow to use
 redis effectively.
 
 
-## Why you don't use RQ
+Why you don't use RQ
+--------------------
 
 RQ has no delayed tasks.
 
 
-## Why you don't use ...
+Why you don't use ...
+---------------------
 
 Other variants have same popularity and level of support as DSQ)
 

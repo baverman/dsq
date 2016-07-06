@@ -1,0 +1,5 @@
+click>=5.0
+msgpack-python==0.4.7
+redis>=2.7
+WebOb>=1.5.0
+pytest-cov>=2.2.0
