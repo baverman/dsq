@@ -4,7 +4,7 @@ import json
 import pytest
 from webob import Request
 
-from dsq.store import QueueStore
+from dsq.store import QueueStore, ResultStore
 from dsq.manager import Manager
 from dsq.http import Application
 from dsq.compat import bytestr
@@ -14,7 +14,7 @@ from dsq.compat import bytestr
 def app(request):
     cl = redis.StrictRedis()
     cl.flushdb()
-    return Application(Manager(QueueStore(cl)))
+    return Application(Manager(QueueStore(cl), ResultStore(cl)))
 
 
 def test_json_404(app):
@@ -95,3 +95,26 @@ def test_task_without_name(app):
     res = req.get_response(app)
     assert res.status_code == 400
     assert res.json == {'message': 'name required', 'error': 'bad-params'}
+
+
+def test_result_get(app):
+    @app.manager.task
+    def add(a, b):
+        return a + b
+
+    req = Request.blank('/push')
+    req.method = 'POST'
+    req.content_type = 'application/json'
+    req.body = bytestr(json.dumps({'queue': 'boo', 'name': 'add',
+                                   'args': (1, 2), 'keep_result': 100}))
+    res = req.get_response(app)
+    tid = res.json['id']
+    assert Request.blank('/get?id={}'.format(tid)).get_response(app).json == None
+    app.manager.process(app.manager.pop(['boo'], 1))
+    assert Request.blank('/get?id={}'.format(tid)).get_response(app).json == 3
+
+
+def test_get_without_id(app):
+    res = Request.blank('/get').get_response(app)
+    assert res.status_code == 400
+    assert res.json == {'message': 'id required', 'error': 'bad-params'}

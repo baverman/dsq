@@ -4,6 +4,7 @@ PY2 = sys.version_info[0] == 2
 
 if PY2:  # pragma: no cover
     import __builtin__ as builtins
+    import urlparse
     range = builtins.xrange
     reduce = builtins.reduce
     string_types = (str, unicode)
@@ -23,6 +24,7 @@ if PY2:  # pragma: no cover
 else:  # pragma: no cover
     import builtins
     from functools import reduce
+    from urllib import parse as urlparse
     range = builtins.range
     string_types = (str, )
 

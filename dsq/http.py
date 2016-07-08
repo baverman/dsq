@@ -3,7 +3,7 @@ import msgpack
 import logging
 import codecs
 
-from .compat import bytestr, PY2
+from .compat import bytestr, PY2, urlparse
 
 log = logging.getLogger('dsq.http')
 
@@ -59,7 +59,15 @@ class Application(object):
         if not task.get('name'):
             return Error('400 BAD REQUEST', 'bad-params', 'name required')
 
-        return self.manager.push(**task)
+        return {'id': self.manager.push(**task)}
+
+    def get(self, environ):
+        qs = urlparse.parse_qs(environ.get('QUERY_STRING'))
+        tid = qs.get('id')
+        if not tid:
+            return Error('400 BAD REQUEST', 'bad-params', 'id required')
+
+        return self.manager.result.get(tid[0])
 
     def __call__(self, environ, start_response):
         url = environ['PATH_INFO'].rstrip('/')
@@ -67,6 +75,8 @@ class Application(object):
         try:
             if method == 'POST' and url == '/push':
                 result = self.push(environ)
+            elif method in ('GET', 'HEAD') and url == '/get':
+                result = self.get(environ)
             else:
                 result = Error('404 NOT FOUND', 'not-found', 'Not found')
         except Exception as e:  # pragma: no cover
