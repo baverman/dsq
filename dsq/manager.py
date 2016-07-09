@@ -33,18 +33,19 @@ class Task(object):
 
 
 class Manager(object):
-    def __init__(self, queue, result=None, sync=False, unknown=None):
+    def __init__(self, queue, result=None, sync=False, unknown=None, default_queue=None):
         self.queue = queue
         self.result = result
         self.sync = sync
         self.registry = {}
         self.unknown = unknown or 'unknown'
+        self.default_queue = default_queue or 'dsq'
 
-    def task(self, name=None, queue='dsq', with_context=False, **kwargs):
+    def task(self, name=None, queue=None, with_context=False, **kwargs):
         def decorator(func):
             fname = tname or func.__name__
             self.register(fname, func, with_context)
-            return Task(self, func, queue=queue, name=fname, **kwargs)
+            return Task(self, func, queue=queue or self.default_queue, name=fname, **kwargs)
 
         if callable(name):
             tname = None

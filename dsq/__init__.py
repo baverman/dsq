@@ -5,7 +5,8 @@ from .utils import redis_client
 _is_main = False
 
 
-def create_manager(queue=None, result=None, sync=False, unknown=None):  # pragma: no cover
+def create_manager(queue=None, result=None, sync=False,
+                   unknown=None, default_queue=None):  # pragma: no cover
     '''Creates dsq manager
 
     :param queue: Redis url for queue store. [redis://]host[:port]/dbnum.
@@ -25,8 +26,7 @@ def create_manager(queue=None, result=None, sync=False, unknown=None):  # pragma
     '''
     return Manager(QueueStore(redis_client(queue)),
                    ResultStore(redis_client(result or queue)),
-                   sync,
-                   unknown)
+                   sync=sync, unknown=unknown, default_queue=default_queue)
 
 
 def is_main():  # pragma: no cover
