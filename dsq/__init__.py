@@ -1,14 +1,16 @@
 from .manager import Manager
-from .store import QueueStore
+from .store import QueueStore, ResultStore
 from .utils import redis_client
 
 _is_main = False
 
 
-def create_manager(url=None, sync=False, unknown=None):  # pragma: no cover
+def create_manager(queue=None, result=None, sync=False, unknown=None):  # pragma: no cover
     '''Creates dsq manager
 
-    :param url: Redis url. [redis://]host[:port]/dbnum.
+    :param queue: Redis url for queue store. [redis://]host[:port]/dbnum.
+    :param result: Redis url for result store. By default it is the
+                   same as queue. [redis://]host[:port]/dbnum.
     :param sync: Synchronous operation. Manager.push invokes
                  task immediately.
     :param unknown: Name of unknown queue.
@@ -21,7 +23,10 @@ def create_manager(url=None, sync=False, unknown=None):  # pragma: no cover
        def add(a, b):
            return a + b
     '''
-    return Manager(QueueStore(redis_client(url)), sync, unknown)
+    return Manager(QueueStore(redis_client(queue)),
+                   ResultStore(redis_client(result or queue)),
+                   sync,
+                   unknown)
 
 
 def is_main():  # pragma: no cover

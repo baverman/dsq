@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import sys
 import time
 import logging
@@ -61,9 +63,12 @@ def forwarder(tasks, interval, batch_size, source, dest):
     from .utils import RunFlag, load_manager, redis_client
     from .store import QueueStore
     log = logging.getLogger('dsq.forwarder')
-    manager = load_manager(tasks)
 
-    s = QueueStore(redis_client(source)) if source else manager.queue
+    if not tasks and not source:
+        print('--tasks or --source must be provided')
+        sys.exit(1)
+
+    s = QueueStore(redis_client(source)) if source else load_manager(tasks).queue
     d = QueueStore(redis_client(dest))
     run = RunFlag()
     while run:
@@ -77,3 +82,18 @@ def forwarder(tasks, interval, batch_size, source, dest):
                 raise
         else:
             time.sleep(interval)
+
+
+@cli.command()
+@click.option('-t', '--tasks', required=True, help=tasks_help)
+@click.option('-b', '--bind', help='Listen on [host]:port', default='127.0.0.1:9042')
+def http(tasks, bind):
+    from wsgiref.simple_server import make_server
+    from .utils import load_manager
+    from .http import Application
+
+    host, _, port = bind.partition(':')
+    app = Application(load_manager(tasks))
+    httpd = make_server(host, int(port), app)
+    print('Listen on {}:{} ...'.format(host or '0.0.0.0', port), file=sys.stderr)
+    httpd.serve_forever()

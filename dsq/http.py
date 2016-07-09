@@ -39,14 +39,15 @@ class Application(object):
     def push(self, environ):
         ct = environ.get('CONTENT_TYPE')
         stream = environ['wsgi.input']
+        content = stream.read(int(environ['CONTENT_LENGTH']))
         if ct == 'application/json':
             try:
-                task = json.load(stream if PY2 else utf8_reader(stream))
+                task = json.loads(content if PY2 else content.decode('utf-8'))
             except:
                 return Error('400 BAD REQUEST', 'invalid-encoding', 'Can\'t decode body')
         elif ct == 'application/x-msgpack':
             try:
-                task = msgpack.load(stream, encoding='utf-8')
+                task = msgpack.loads(content, encoding='utf-8')
             except:
                 return Error('400 BAD REQUEST', 'invalid-encoding', 'Can\'t decode body')
         else:
