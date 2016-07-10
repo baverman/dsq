@@ -30,6 +30,7 @@ else:  # pragma: no cover
 
 
 class QueueStore(object):
+    """Queue store"""
     def __init__(self, client):
         self.client = client
 
@@ -120,6 +121,7 @@ class QueueStore(object):
 
 
 class ResultStore(object):
+    """Result store"""
     def __init__(self, client):
         self.client = client
 

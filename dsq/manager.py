@@ -33,6 +33,18 @@ class Task(object):
 
 
 class Manager(object):
+    """DSQ manager
+
+    Allows to register task functions, push tasks and get task results
+
+    :param queue: :py:class:`~.store.QueueStore` to use for tasks.
+    :param result: :py:class:`~.store.ResultStore` to use for task results.
+    :param sync: Synchronous operation. Task will be executed immediately during
+                 :py:meth:`push` call.
+    :param unknown: Name of unknown queue for tasks for which there is no registered functions.
+                    Default is 'unknown'.
+    :param default_queue: Name of default queue. Default is 'dsq'.
+    """
     def __init__(self, queue, result=None, sync=False, unknown=None, default_queue=None):
         self.queue = queue
         self.result = result
@@ -42,6 +54,30 @@ class Manager(object):
         self.default_queue = default_queue or 'dsq'
 
     def task(self, name=None, queue=None, with_context=False, **kwargs):
+        """Task decorator
+
+        Function wrapper to register task in manager and provide simple interface to calling it.
+
+        :param name: Task name, dsq will use func.__name__ if not provided.
+        :param queue: Queue name to use.
+        :param with_context: Provide task context as first task argument.
+        :param \*\*kwrags: Rest params as for :py:meth:`push`.
+
+        ::
+
+            @manager.task
+            def task1(arg):
+                long_running_func(arg)
+
+            @manager.task(name='custom-name', queue='low', with_context=True)
+            def task2(ctx, arg):
+                print ctx.task.id
+                return long_running_func(arg)
+
+            task1('boo')  # push task to queue
+            task2.modify(keep_result=300)('foo')  # push task with keep_result option.
+            task1.sync('boo')  # direct call of task1.
+        """
         def decorator(func):
             fname = tname or func.__name__
             self.register(fname, func, with_context)
@@ -55,6 +91,20 @@ class Manager(object):
         return decorator
 
     def register(self, name, func, with_context=False):
+        """Register task
+
+        :param name: Task name.
+        :param func: Function.
+        :param with_context: Provide task context as first task argument.
+
+        ::
+
+            def add(a, b):
+                return a + b
+
+            manager.register('add', add)
+            manager.push('normal', 'add', (1, 2), keep_result=300)
+        """
         if with_context:
             func._dsq_context = True
         self.registry[name] = func
@@ -62,7 +112,7 @@ class Manager(object):
     def push(self, queue, name, args=(), kwargs={}, meta=None, ttl=None,
              eta=None, delay=None, dead=None, retry=None, retry_delay=10,
              timeout=None, keep_result=None):
-        """Add tasks into queue
+        """Add task into queue
 
         :param queue: Queue name.
         :param name: Task name.
@@ -73,9 +123,12 @@ class Manager(object):
         :param eta: Schedule task execution for particular unix timestamp.
         :param delay: Postpone task execution for particular amount of seconds.
         :param dead: Name of dead-letter queue.
-        :param retry: Retry task execution after exception. True - forever, number - retry this amount.
+        :param retry: Retry task execution after exception. True - forever,
+                      number - retry this amount.
         :param retry_delay: Delay between retry attempts.
         :param timeout: Task execution timeout.
+        :param keep_result: Keep task return value for this amount of seconds.
+                            Result is ignored by default.
         """
         if self.sync:
             self.process(make_task(name, args, kwargs, meta=meta))
@@ -91,12 +144,30 @@ class Manager(object):
         return task.id if PY2 else task.id.decode()
 
     def pop(self, queue_list, timeout=None):
+        """Pop item from the first not empty queue in ``queue_list``
+
+        :param queue_list: List of queue names.
+        :param timeout: Wait item for this amount of seconds (integer).
+                        By default blocks forever.
+
+        ::
+
+            item = manager.pop(['high', 'normal'], 1)
+            if item:
+                manager.process(item)
+        """
         queue, task = self.queue.pop(queue_list, timeout)
         if task:
             task['queue'] = queue
             return attrdict(task)
 
     def process(self, task, now=None, log_exc=True):
+        """Process task item
+
+        :param task: Task.
+        :param now: Unix timestamp to compare with ``task.expire`` time and set ``eta`` on retry.
+        :param log_exc: Log any exception during task execution. ``True`` by default.
+        """
         if task.expire is not None and (now or time()) > task.expire:
             return
 

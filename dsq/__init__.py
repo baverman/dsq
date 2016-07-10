@@ -12,10 +12,9 @@ def create_manager(queue=None, result=None, sync=False,
     :param queue: Redis url for queue store. [redis://]host[:port]/dbnum.
     :param result: Redis url for result store. By default it is the
                    same as queue. [redis://]host[:port]/dbnum.
-    :param sync: Synchronous operation. Manager.push invokes
-                 task immediately.
-    :param unknown: Name of unknown queue.
 
+    ``sync``, ``unknown`` and ``default_queue`` params are the same as for
+    :py:class:`~.manager.Manager` constructor.
     ::
 
        manager = create_manager()
@@ -30,7 +29,7 @@ def create_manager(queue=None, result=None, sync=False,
 
 
 def is_main():  # pragma: no cover
-    '''Returns True if dsq command is in progress
+    '''Returns True if ``dsq`` command is in progress
 
     May be useful for tasks module which imports
     other tasks to avoid recursive imports::
