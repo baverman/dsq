@@ -4,6 +4,9 @@ DSQ
 .. image:: https://travis-ci.org/baverman/dsq.svg?branch=master
    :target: https://travis-ci.org/baverman/dsq
 
+.. image:: https://readthedocs.org/projects/dsq/badge/?version=latest
+   :target: http://dsq.readthedocs.io/en/latest/?badge=latest
+
 Dead simple task queue using redis.
 
 .. code:: python
