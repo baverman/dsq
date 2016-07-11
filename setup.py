@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='dsq',
-    version='0.4',
+    version='0.4.1',
     url='https://github.com/baverman/dsq/',
     license='MIT',
     author='Anton Bobrov',
