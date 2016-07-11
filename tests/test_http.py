@@ -65,7 +65,7 @@ def test_json_push(app):
     req.body = bytestr(json.dumps({'queue': 'normal', 'name': 'boo', 'args': [1, 2, 3]}))
     res = req.get_response(app)
     assert res.status_code == 200
-    assert app.manager.queue.dump()['queues']['normal']
+    assert app.manager.queue.get_queue('normal')
 
 
 def test_msgpack_push(app):
@@ -74,7 +74,7 @@ def test_msgpack_push(app):
     req.content_type = 'application/x-msgpack'
     req.body = msgpack.dumps({'queue': 'normal', 'name': 'boo', 'args': [1, 2, 3]})
     res = req.get_response(app)
-    assert app.manager.queue.dump()['queues']['normal']
+    assert app.manager.queue.get_queue('normal')
 
 
 def test_task_without_queue(app):

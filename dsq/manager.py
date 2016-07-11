@@ -26,7 +26,7 @@ class Task(object):
     def __call__(self, *args, **kwargs):
         self.manager.push(args=args, kwargs=kwargs, **self.ctx)
 
-    def modify(self, **kwargs):
+    def run_with(self, **kwargs):
         ctx = self.ctx.copy()
         ctx.update(kwargs)
         return Task(self.manager, self.sync, **ctx)
@@ -75,7 +75,7 @@ class Manager(object):
                 return long_running_func(arg)
 
             task1('boo')  # push task to queue
-            task2.modify(keep_result=300)('foo')  # push task with keep_result option.
+            task2.run_with(keep_result=300)('foo')  # push task with keep_result option.
             task1.sync('boo')  # direct call of task1.
         """
         def decorator(func):

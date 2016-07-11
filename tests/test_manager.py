@@ -118,7 +118,7 @@ def test_task_modification(manager):
     def foo():
         pass
 
-    foo.modify(queue='bar', ttl=10, dead='dead')()
+    foo.run_with(queue='bar', ttl=10, dead='dead')()
     task = manager.pop(['bar'], 1)
     assert task.queue == 'bar'
     assert task.expire
@@ -131,7 +131,7 @@ def test_task_sync(manager):
         return a + b
 
     assert foo.sync(1, 2) == 3
-    assert foo.modify(queue='normal').sync(1, 2) == 3
+    assert foo.run_with(queue='normal').sync(1, 2) == 3
 
 
 def test_sync_manager(manager):
@@ -173,8 +173,10 @@ def test_task_with_context(manager):
 def test_delayed_task(manager):
     now = time.time()
     manager.push('test', 'foo', delay=10)
-    result = manager.queue.dump()
-    assert now + 9 < result['schedule'][0][1] < now + 11
+    (ts, q, t), = manager.queue.get_schedule()
+    assert now + 9 < ts < now + 11
+    assert q == 'test'
+    assert t['name'] == 'foo'
 
 
 def test_manager_must_pass_stop_worker_exc(manager):

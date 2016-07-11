@@ -46,6 +46,7 @@ def test_take_and_put(store):
     store.push('boo', 'boo4', eta=10)
     store.push('boo', 'boo5', eta=15)
     store.push('foo', 'foo3', eta=20)
+    assert set(store.queue_list()) == set(('boo', 'foo'))
 
     result = store.take_many(2)
     assert stask_names(result['schedule']) == [b'boo4', b'boo5']
@@ -58,7 +59,8 @@ def test_take_and_put(store):
     assert 'foo' not in result['queues']
 
     store.put_many(result)
-    dump = store.dump()
-    assert stask_names(dump['schedule']) == [b'foo3']
-    assert task_names(dump['queues']['boo']) == [b'boo3']
-    assert dump['schedule'][0][1] == 20
+    assert set(store.queue_list()) == set(('boo',))
+
+    assert store.get_schedule() == [(20, 'foo', 'foo3')]
+    assert store.get_queue('boo') == ['boo3']
+    assert store.get_queue('foo') == []

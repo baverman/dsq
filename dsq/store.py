@@ -68,23 +68,23 @@ class QueueStore(object):
             pipe.execute()
 
     def take_many(self, count):
-        queues = self.client.keys(rqname('*'))
+        queues = self.queue_list()
 
         pipe = self.client.pipeline()
         pipe.zrange(SCHEDULE_KEY, 0, count - 1, withscores=True)
         for q in queues:
-            pipe.lrange(q, 0, count - 1)
+            pipe.lrange(rqname(q), 0, count - 1)
 
         pipe.zremrangebyrank(SCHEDULE_KEY, 0, count - 1)
         for q in queues:
-            pipe.ltrim(q, count, -1)
+            pipe.ltrim(rqname(q), count, -1)
 
         cmds = pipe.execute()
         qresult = {}
         result = {'schedule': cmds[0], 'queues': qresult}
         for q, r in zip(queues, cmds[1:]):
             if r:
-                qresult[qname(q)] = r
+                qresult[q] = r
 
         return result
 
@@ -102,22 +102,19 @@ class QueueStore(object):
 
         pipe.execute()
 
-    def dump(self):
-        queues = self.client.keys(rqname('*'))
+    def queue_list(self):
+        return [qname(r) for r in self.client.keys(rqname('*'))]
 
-        pipe = self.client.pipeline()
-        pipe.zrange(SCHEDULE_KEY, 0, -1, withscores=True)
-        for q in queues:
-            pipe.lrange(q, 0, -1)
+    def get_queue(self, queue, offset=0, limit=100):
+        items = self.client.lrange(rqname(queue), offset, offset + limit - 1)
+        return [loads(r, encoding='utf-8') for r in items]
 
-        cmds = pipe.execute()
-        qresult = {}
-        result = {'schedule': cmds[0], 'queues': qresult}
-        for q, r in zip(queues, cmds[1:]):
-            if r:
-                qresult[qname(q)] = r
-
-        return result
+    def get_schedule(self, offset=0, limit=100):
+        items = [(ts, r.partition(b':'))
+                 for r, ts in self.client.zrange(SCHEDULE_KEY, offset,
+                                                 offset + limit - 1, withscores=True)]
+        return [(ts, q if PY2 else q.decode('utf-8'), loads(r, encoding='utf-8'))
+                for ts, (q, _, r) in items]
 
 
 class ResultStore(object):

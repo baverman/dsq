@@ -4,6 +4,9 @@ import sys
 import time
 import logging
 import click
+import json
+
+from datetime import datetime
 
 
 @click.group()
@@ -88,6 +91,7 @@ def forwarder(tasks, interval, batch_size, source, dest):
 @click.option('-t', '--tasks', required=True, help=tasks_help)
 @click.option('-b', '--bind', help='Listen on [host]:port', default='127.0.0.1:9042')
 def http(tasks, bind):
+    """Http interface using built-in simple wsgi server"""
     from wsgiref.simple_server import make_server
     from .utils import load_manager
     from .http import Application
@@ -97,3 +101,60 @@ def http(tasks, bind):
     httpd = make_server(host, int(port), app)
     print('Listen on {}:{} ...'.format(host or '0.0.0.0', port), file=sys.stderr)
     httpd.serve_forever()
+
+
+@cli.command('queue')
+@click.option('-t', '--tasks', required=True, help=tasks_help)
+@click.argument('queue', nargs=-1)
+def dump_queue(tasks, queue):
+    """Dump queue content"""
+    from .utils import load_manager
+    manager = load_manager(tasks)
+    if not queue:
+        queue = manager.queue.queue_list()
+
+    count = 5000
+    for q in queue:
+        offset = 0
+        while True:
+            items = manager.queue.get_queue(q, offset, count)
+            if not items:
+                break
+
+            for r in items:
+                print(json.dumps(r, ensure_ascii=False, sort_keys=True))
+
+            offset += count
+
+
+@cli.command('schedule')
+@click.option('-t', '--tasks', required=True, help=tasks_help)
+def dump_schedule(tasks):
+    """Dump schedule content"""
+    from .utils import load_manager
+    manager = load_manager(tasks)
+
+    count = 5000
+    offset = 0
+    while True:
+        items = manager.queue.get_schedule(offset, count)
+        if not items:
+            break
+
+        for ts, queue, item in items:
+            print(datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'),
+                  queue,
+                  json.dumps(item, ensure_ascii=False, sort_keys=True),
+                  sep='\t')
+
+        offset += count
+
+
+@cli.command('queue-list')
+@click.option('-t', '--tasks', required=True, help=tasks_help)
+def queue_list(tasks):
+    """Print non empty queues"""
+    from .utils import load_manager
+    manager = load_manager(tasks)
+    for r in manager.queue.queue_list():
+        print(r)

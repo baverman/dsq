@@ -14,9 +14,8 @@ dsq.manager
 .. automodule:: dsq.manager
    :members:
 
-
-dsq.store
----------
-
-.. automodule:: dsq.store
-   :members:
+..
+    dsq.store
+    ---------
+    .. automodule:: dsq.store
+       :members:
