@@ -2,13 +2,13 @@ from setuptools import setup, find_packages
 
 setup(
     name='dsq',
-    version='0.3',
+    version='0.3.1',
     url='https://github.com/baverman/dsq/',
     license='MIT',
     author='Anton Bobrov',
     author_email='baverman@gmail.com',
     description='Dead simple task queue using redis',
-    long_description=open('README.md').read(),
+    long_description=open('README.rst').read(),
     packages=find_packages(exclude=['tests']),
     include_package_data=True,
     zip_safe=False,

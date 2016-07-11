@@ -25,6 +25,8 @@ Dead simple task queue using redis.
 
     $ dsq worker -t tasks:manager normal
 
+See full `DSQ documentation <http://dsq.readthedocs.io/>`_.
+
 
 Features
 --------
