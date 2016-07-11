@@ -58,7 +58,7 @@ class LoadError(Exception):
         self.module = module
 
 
-def load_var(module_name, default_var='app'):
+def load_var(module_name, default_var):
     """Loads variable from a module
 
     :param module_name: module.name or module.name:var
@@ -81,7 +81,7 @@ def load_var(module_name, default_var='app'):
 
 def load_manager(module_name):  # pragma: no cover
     try:
-        return load_var(module_name)
+        return load_var(module_name, 'manager')
     except LoadError as e:
         print('{} not found in {}'.format(e.var, e.module))
         sys.exit(1)

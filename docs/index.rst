@@ -17,7 +17,7 @@ Dead simple task queue using redis.
 
 .. code:: bash
 
-    $ dsq worker -t tasks:manager normal
+    $ dsq worker -t tasks normal
 
 Entry point is :py:class:`dsq.manager.Manager` class.
 

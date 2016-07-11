@@ -17,7 +17,7 @@ def cli():
     dsq._is_main = True
 
 
-tasks_help=('Task module. By default dsq searches `app` '
+tasks_help=('Task module. By default dsq searches `manager` '
             'variable in it. But one can provide custom var via '
             'package.module:varname syntax.')
 
@@ -33,7 +33,7 @@ def worker(tasks, lifetime, task_timeout, queue):
     QUEUE is a prioritized queue list. Worker will take tasks from the first queue
     then from the second if first is empty and so on. For example:
 
-        dsq worker -t tasks:manager high normal low
+        dsq worker -t tasks high normal low
 
     Allows to handle tasks from `high` queue first.
     '''
