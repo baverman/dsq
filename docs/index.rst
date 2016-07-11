@@ -71,7 +71,7 @@ Worker do not store result by default.
 
 
 Documentation
--------------
+=============
 
 .. toctree::
    :maxdepth: 2
