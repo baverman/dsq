@@ -60,7 +60,7 @@ class Application(object):
         if not task.get('name'):
             return Error('400 BAD REQUEST', 'bad-params', 'name required')
 
-        return {'id': self.manager.push(**task)}
+        return {'id': self.manager.push(**task).id}
 
     def get(self, environ):
         qs = urlparse.parse_qs(environ.get('QUERY_STRING'))

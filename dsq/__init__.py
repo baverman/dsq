@@ -7,11 +7,12 @@ _is_main = False
 
 def create_manager(queue=None, result=None, sync=False,
                    unknown=None, default_queue=None):  # pragma: no cover
-    '''Creates dsq manager
+    '''Helper to create dsq manager
 
     :param queue: Redis url for queue store. [redis://]host[:port]/dbnum.
     :param result: Redis url for result store. By default it is the
                    same as queue. [redis://]host[:port]/dbnum.
+    :returns: :py:class:`~.manager.Manager`
 
     ``sync``, ``unknown`` and ``default_queue`` params are the same as for
     :py:class:`~.manager.Manager` constructor.

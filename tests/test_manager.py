@@ -6,7 +6,7 @@ import redis
 import msgpack
 
 from dsq.store import QueueStore, ResultStore
-from dsq.manager import Manager, make_task
+from dsq.manager import Manager, make_task, EMPTY
 from dsq.worker import Worker, StopWorker
 
 
@@ -141,9 +141,9 @@ def test_sync_manager(manager):
     @manager.task
     def foo(a, b):
         foo.called = True
-        assert a + b == 3
+        return a + b
 
-    foo(1, 2)
+    assert foo(1, 2).get() == 3
     assert foo.called
 
     with pytest.raises(KeyError):
@@ -194,9 +194,11 @@ def test_get_result(manager):
     def task():
         return 'result'
 
-    tid = manager.push('normal', 'task', keep_result=10)
+    result = manager.push('normal', 'task', keep_result=10)
+    assert result.get() == EMPTY
+    assert result.get(0.1, 0.05) == EMPTY
     manager.process(manager.pop(['normal'], 1))
-    assert manager.result.get(tid) == 'result'
+    assert result.get() == 'result'
 
 
 def test_tasks_should_have_non_none_fields(manager):

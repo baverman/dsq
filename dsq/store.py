@@ -128,4 +128,4 @@ class ResultStore(object):
     def get(self, id):
         value = self.client.get(id)
         if value is not None:
-            return loads(value, encoding='utf-8')
+            return {'result': loads(value, encoding='utf-8')}

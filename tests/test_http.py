@@ -111,7 +111,7 @@ def test_result_get(app):
     tid = res.json['id']
     assert Request.blank('/get?id={}'.format(tid)).get_response(app).json == None
     app.manager.process(app.manager.pop(['boo'], 1))
-    assert Request.blank('/get?id={}'.format(tid)).get_response(app).json == 3
+    assert Request.blank('/get?id={}'.format(tid)).get_response(app).json == {'result': 3}
 
 
 def test_get_without_id(app):

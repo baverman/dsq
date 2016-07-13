@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from time import time
+from time import time, sleep
 import logging
 
 from .utils import make_id, task_fmt
@@ -23,7 +23,7 @@ class Task(object):
         self.ctx = kwargs
 
     def __call__(self, *args, **kwargs):
-        self.manager.push(args=args, kwargs=kwargs, **self.ctx)
+        return self.manager.push(args=args, kwargs=kwargs, **self.ctx)
 
     def run_with(self, **kwargs):
         ctx = self.ctx.copy()
@@ -35,6 +35,41 @@ class Context(object):
     def __init__(self, manager, task):
         self.manager = manager
         self.task = task
+
+
+class EMPTY: pass
+
+
+class Result(object):
+    def __init__(self, manager, id, value=EMPTY):
+        self.manager = manager
+        self.id = id
+        if value is not EMPTY:
+            self.value = value
+
+    def _fetch(self, timeout, interval):
+        now = time() + (timeout or 0)
+        while True:
+            result = self.manager.result.get(self.id)
+            if result is not None:
+                return result
+            if time() > now:
+                break
+            sleep(interval)
+
+
+    def get(self, timeout=None, interval=1.0):
+        try:
+            return self.value
+        except AttributeError:
+            pass
+
+        value = self._fetch(timeout, interval=interval)
+        if value is not None:
+            self.value = value['result']
+            return self.value
+
+        return EMPTY
 
 
 class Manager(object):
@@ -77,7 +112,7 @@ class Manager(object):
 
             @manager.task(name='custom-name', queue='low', with_context=True)
             def task2(ctx, arg):
-                print ctx.task.id
+                print ctx.task['id']
                 return long_running_func(arg)
 
             task1('boo')  # push task to queue
@@ -137,8 +172,9 @@ class Manager(object):
                             Result is ignored by default.
         """
         if self.sync:
-            self.process(make_task(name=name, args=args, kwargs=kwargs, meta=meta))
-            return
+            task = make_task(name=name, args=args, kwargs=kwargs, meta=meta)
+            result = self.process(task)
+            return Result(self, task['id'], result)
 
         if delay:
             eta = time() + delay
@@ -148,7 +184,8 @@ class Manager(object):
                          retry_delay=retry_delay, timeout=timeout,
                          keep_result=keep_result)
         self.queue.push(queue, task, eta=eta)
-        return task['id'] if PY2 else task['id'].decode()
+        task_id = task['id'] if PY2 else task['id'].decode()
+        return Result(self, task_id)
 
     def pop(self, queue_list, timeout=None):
         """Pop item from the first not empty queue in ``queue_list``
@@ -198,6 +235,8 @@ class Manager(object):
 
             if task.get('keep_result'):
                 self.result.set(task['id'], result, task['keep_result'])
+
+            return result
         except StopWorker:
             raise
         except:
