@@ -12,9 +12,12 @@ def make_id():  # pragma: no cover
     return urlsafe_b64encode(uuid4().bytes).rstrip(b'=')
 
 
-class attrdict(dict):
-    __getattr__ = dict.__getitem__
-    __setattr__ = dict.__setitem__
+def task_fmt(task):
+    arglist = []
+    arglist.extend('{}'.format(r) for r in task.get('args', ()))
+    arglist.extend('{}={}'.format(*r) for r in task.get('kwargs', {}).items())
+    return '{}({})#{}'.format(task.get('name', '__no_name__'),
+                              ', '.join(arglist), task.get('id', '__no_id__'))
 
 
 def iter_chunks(seq, chunk_size):  # pragma: no cover

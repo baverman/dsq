@@ -3,7 +3,7 @@ import logging
 import signal
 from time import time
 
-from .utils import RunFlag
+from .utils import RunFlag, task_fmt
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class Worker(object):
         self.current_task = None
 
     def process_one(self, task):
-        timeout = task.timeout or self.task_timeout
+        timeout = task.get('timeout', self.task_timeout)
         if timeout: signal.alarm(timeout)
 
         self.current_task = task
@@ -30,8 +30,10 @@ class Worker(object):
 
     def alarm_handler(self, signum, frame):  # pragma: no cover
         trace = ''.join(traceback.format_stack(frame))
-        log.error('Timeout during processing task {id} {name}'
-                  '({args}, {kwargs})\n %s'.format(**self.current_task), trace)
+        log.error(
+            'Timeout during processing task {}\n %s'.format(
+                task_fmt(self.current_task)),
+            trace)
         raise StopWorker()
 
     def process(self, queue_list):  # pragma: no cover

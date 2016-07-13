@@ -37,7 +37,7 @@ def test_expired_task(manager):
 
 def test_unknown_task(manager):
     manager.process(make_task('foo'))
-    assert manager.pop(['unknown'], 1).name == 'foo'
+    assert manager.pop(['unknown'], 1)['name'] == 'foo'
 
 
 def test_worker_alarm(manager):
@@ -63,21 +63,22 @@ def test_retry_task(manager):
     def foo():
         raise Exception()
 
+    manager.default_retry_delay = None
     t = make_task('foo', retry=True)
-    t.queue = 'test'
+    t['queue'] = 'test'
     manager.process(t)
-    assert manager.pop(['test'], 1).name == 'foo'
+    assert manager.pop(['test'], 1)['name'] == 'foo'
 
-    t.retry_delay = 10
+    t['retry_delay'] = 10
     manager.process(t, now=20)
     assert not manager.pop(['test'], 1)
     manager.queue.reschedule(50)
-    assert manager.pop(['test'], 1).name == 'foo'
+    assert manager.pop(['test'], 1)['name'] == 'foo'
 
-    t.retry_delay = None
-    t.retry = 1
+    t['retry_delay'] = None
+    t['retry'] = 1
     manager.process(t, now=20)
-    assert manager.pop(['test'], 1).retry == 0
+    assert manager.pop(['test'], 1)['retry'] == 0
 
 
 def test_dead_task(manager):
@@ -86,7 +87,7 @@ def test_dead_task(manager):
         raise Exception()
 
     manager.process(make_task('foo', dead='dead'))
-    assert manager.pop(['dead'], 1).name == 'foo'
+    assert manager.pop(['dead'], 1)['name'] == 'foo'
 
 
 def test_task_calling(manager):
@@ -120,9 +121,9 @@ def test_task_modification(manager):
 
     foo.run_with(queue='bar', ttl=10, dead='dead')()
     task = manager.pop(['bar'], 1)
-    assert task.queue == 'bar'
-    assert task.expire
-    assert task.dead == 'dead'
+    assert task['queue'] == 'bar'
+    assert task['expire']
+    assert task['dead'] == 'dead'
 
 
 def test_task_sync(manager):
@@ -162,7 +163,7 @@ def test_task_with_context(manager):
     def foo(ctx, a, b):
         foo.called = True
         assert ctx.manager is manager
-        assert ctx.task.name == 'foo'
+        assert ctx.task['name'] == 'foo'
         assert ctx
         assert a + b == 3
 
@@ -196,3 +197,12 @@ def test_get_result(manager):
     tid = manager.push('normal', 'task', keep_result=10)
     manager.process(manager.pop(['normal'], 1))
     assert manager.result.get(tid) == 'result'
+
+
+def test_tasks_should_have_non_none_fields(manager):
+    manager.push('boo', 'foo')
+    t = manager.pop(['boo'], 1)
+    assert t['id']
+    assert t['name'] == 'foo'
+    assert t['queue'] == 'boo'
+    assert set(t) == set(('id', 'name', 'queue'))

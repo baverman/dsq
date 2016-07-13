@@ -3,18 +3,17 @@ from __future__ import print_function
 from time import time
 import logging
 
-from .utils import attrdict, make_id
+from .utils import make_id, task_fmt
 from .worker import StopWorker
 from .compat import PY2
 
 log = logging.getLogger(__name__)
 
 
-def make_task(name, args=None, kwargs=None, meta=None, expire=None,
-              dead=None, retry=None, retry_delay=None, timeout=None, keep_result=None):
-    return attrdict(id=make_id(), name=name, args=args or (), kwargs=kwargs or {},
-                    meta=meta or {}, expire=expire, dead=dead, retry=retry,
-                    retry_delay=retry_delay, timeout=timeout, keep_result=keep_result)
+def make_task(name, **kwargs):
+    kwargs['id'] = make_id()
+    kwargs['name'] = name
+    return dict(r for r in kwargs.items() if r[1] is not None)
 
 
 class Task(object):
@@ -30,6 +29,12 @@ class Task(object):
         ctx = self.ctx.copy()
         ctx.update(kwargs)
         return Task(self.manager, self.sync, **ctx)
+
+
+class Context(object):
+    def __init__(self, manager, task):
+        self.manager = manager
+        self.task = task
 
 
 class Manager(object):
@@ -52,6 +57,7 @@ class Manager(object):
         self.registry = {}
         self.unknown = unknown or 'unknown'
         self.default_queue = default_queue or 'dsq'
+        self.default_retry_delay = 60
 
     def task(self, name=None, queue=None, with_context=False, **kwargs):
         """Task decorator
@@ -109,8 +115,8 @@ class Manager(object):
             func._dsq_context = True
         self.registry[name] = func
 
-    def push(self, queue, name, args=(), kwargs={}, meta=None, ttl=None,
-             eta=None, delay=None, dead=None, retry=None, retry_delay=10,
+    def push(self, queue, name, args=None, kwargs=None, meta=None, ttl=None,
+             eta=None, delay=None, dead=None, retry=None, retry_delay=None,
              timeout=None, keep_result=None):
         """Add task into queue
 
@@ -131,17 +137,18 @@ class Manager(object):
                             Result is ignored by default.
         """
         if self.sync:
-            self.process(make_task(name, args, kwargs, meta=meta))
+            self.process(make_task(name=name, args=args, kwargs=kwargs, meta=meta))
             return
 
         if delay:
             eta = time() + delay
 
-        task = make_task(name, args, kwargs, meta=meta, expire=ttl and (time() + ttl),
-                         dead=dead, retry=retry, retry_delay=retry_delay,
-                         timeout=timeout, keep_result=keep_result)
+        task = make_task(name=name, args=args, kwargs=kwargs, meta=meta,
+                         expire=ttl and (time() + ttl), dead=dead, retry=retry,
+                         retry_delay=retry_delay, timeout=timeout,
+                         keep_result=keep_result)
         self.queue.push(queue, task, eta=eta)
-        return task.id if PY2 else task.id.decode()
+        return task['id'] if PY2 else task['id'].decode()
 
     def pop(self, queue_list, timeout=None):
         """Pop item from the first not empty queue in ``queue_list``
@@ -159,7 +166,7 @@ class Manager(object):
         queue, task = self.queue.pop(queue_list, timeout)
         if task:
             task['queue'] = queue
-            return attrdict(task)
+            return task
 
     def process(self, task, now=None, log_exc=True):
         """Process task item
@@ -168,27 +175,29 @@ class Manager(object):
         :param now: Unix timestamp to compare with ``task.expire`` time and set ``eta`` on retry.
         :param log_exc: Log any exception during task execution. ``True`` by default.
         """
-        if task.expire is not None and (now or time()) > task.expire:
+        expire = task.get('expire')
+        if expire is not None and (now or time()) > expire:
             return
 
         try:
-            func = self.registry[task.name]
+            func = self.registry[task['name']]
         except KeyError:
             if self.sync:
                 raise
             self.queue.push(self.unknown, task)
-            log.error('Function for task "%s" not found', task.name)
+            log.error('Function for task "%s" not found', task['name'])
             return
 
+        args = task.get('args', ())
+        kwargs = task.get('kwargs', {})
         try:
             if getattr(func, '_dsq_context', None):
-                result = func(attrdict(manager=self, task=task), *task.args, **task.kwargs)
+                result = func(Context(self, task), *args, **kwargs)
             else:
-                result = func(*task.args, **task.kwargs)
+                result = func(*args, **kwargs)
 
             if task.get('keep_result'):
-                self.result.set(task.id, result, task.keep_result)
-
+                self.result.set(task['id'], result, task['keep_result'])
         except StopWorker:
             raise
         except:
@@ -196,13 +205,17 @@ class Manager(object):
                 raise
 
             if log_exc:
-                log.exception('Error during processing task {id} {name}({args}, {kwargs})'.format(**task))
+                log.exception('Error during processing task {}'.format(task_fmt(task)))
 
-            if task.retry and task.retry > 0:
-                if task.retry is not True:
-                    task.retry -= 1
-                eta = task.retry_delay and (now or time()) + task.retry_delay
-                self.queue.push(task.queue, task, eta=eta)
-            elif task.dead:
-                task.retry = False
-                self.queue.push(task.dead, task)
+            retry = task.get('retry')
+            if retry and retry > 0:
+                if retry is not True:
+                    task['retry'] -= 1
+
+                retry_delay = task.get('retry_delay', self.default_retry_delay)
+                eta = retry_delay and (now or time()) + retry_delay
+                self.queue.push(task['queue'], task, eta=eta)
+            elif task.get('dead'):
+                task.pop('retry', None)
+                task.pop('retry_delay', None)
+                self.queue.push(task['dead'], task)
