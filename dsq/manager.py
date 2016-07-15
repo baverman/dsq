@@ -2,6 +2,7 @@ from __future__ import print_function
 
 from time import time, sleep
 import logging
+import traceback
 
 from .utils import make_id, task_fmt
 from .worker import StopWorker
@@ -44,7 +45,9 @@ class Result(object):
     def __init__(self, manager, id, value=EMPTY):
         self.manager = manager
         self.id = id
+        self._ready = False
         if value is not EMPTY:
+            self._ready = True
             self.value = value
 
     def _fetch(self, timeout, interval):
@@ -57,19 +60,22 @@ class Result(object):
                 break
             sleep(interval)
 
-
-    def get(self, timeout=None, interval=1.0):
-        try:
-            return self.value
-        except AttributeError:
-            pass
+    def ready(self, timeout=None, interval=1.0):
+        if self._ready:
+            return self
 
         value = self._fetch(timeout, interval=interval)
         if value is not None:
-            self.value = value['result']
-            return self.value
+            if 'error' in value:
+                self.error = value['error']
+                self.error_message = value['message']
+                self.error_trace = value['trace']
+            else:
+                self.value = value['result']
+            self._ready = True
+            return self
 
-        return EMPTY
+        return None
 
 
 class Manager(object):
@@ -227,19 +233,20 @@ class Manager(object):
 
         args = task.get('args', ())
         kwargs = task.get('kwargs', {})
+        keep_result = task.get('keep_result')
         try:
             if getattr(func, '_dsq_context', None):
                 result = func(Context(self, task), *args, **kwargs)
             else:
                 result = func(*args, **kwargs)
 
-            if task.get('keep_result'):
-                self.result.set(task['id'], result, task['keep_result'])
+            if keep_result:
+                self.result.set(task['id'], {'result': result}, keep_result)
 
             return result
         except StopWorker:
             raise
-        except:
+        except Exception as e:
             if self.sync:
                 raise
 
@@ -254,7 +261,15 @@ class Manager(object):
                 retry_delay = task.get('retry_delay', self.default_retry_delay)
                 eta = retry_delay and (now or time()) + retry_delay
                 self.queue.push(task['queue'], task, eta=eta)
-            elif task.get('dead'):
+                return
+
+            if task.get('dead'):
                 task.pop('retry', None)
                 task.pop('retry_delay', None)
                 self.queue.push(task['dead'], task)
+
+            if keep_result:
+                result = {'error': type(e).__name__,
+                          'message': '{}'.format(e),
+                          'trace': traceback.format_exc()}
+                self.result.set(task['id'], result, keep_result)

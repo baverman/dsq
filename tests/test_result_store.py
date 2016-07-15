@@ -14,7 +14,7 @@ def store(request):
 
 def test_set(store):
     store.set('id', 10, 20)
-    assert store.get('id') == {'result': 10}
+    assert store.get('id') == 10
     assert store.client.ttl('id') == 20
 
 
