@@ -50,7 +50,7 @@ def test_worker_alarm(manager):
     def foo(sleep):
         time.sleep(sleep)
 
-    w = Worker(manager, ['test'], task_timeout=1)
+    w = Worker(manager, task_timeout=1)
     w.process_one(make_task('foo', args=(0.1,)))
     assert not called
 

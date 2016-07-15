@@ -26,8 +26,9 @@ tasks_help=('Task module. By default dsq searches `manager` '
 @click.option('-t', '--tasks', required=True, help=tasks_help)
 @click.option('--lifetime', type=int, help='Max worker lifetime.')
 @click.option('--task-timeout', type=int, help='Kill task after this period of time.')
+@click.option('-b', '--burst', is_flag=True, help='Stop worker after all queue is empty.')
 @click.argument('queue', nargs=-1, required=True)
-def worker(tasks, lifetime, task_timeout, queue):
+def worker(tasks, lifetime, task_timeout, burst, queue):
     '''Task executor.
 
     QUEUE is a prioritized queue list. Worker will take tasks from the first queue
@@ -39,19 +40,23 @@ def worker(tasks, lifetime, task_timeout, queue):
     '''
     from .utils import load_manager
     from .worker import Worker
-    worker = Worker(load_manager(tasks), lifetime, task_timeout)
-    worker.process(queue)
+    worker = Worker(load_manager(tasks), lifetime=lifetime,
+                    task_timeout=task_timeout)
+    worker.process(queue, burst)
 
 
 @cli.command()
 @click.option('-t', '--tasks', required=True, help=tasks_help)
-def scheduler(tasks):
+@click.option('-b', '--burst', is_flag=True, help='Stop scheduler after queue is empty.')
+def scheduler(tasks, burst):
     '''Schedule delayed tasks into execution queues.'''
     from .utils import RunFlag, load_manager
     manager = load_manager(tasks)
     run = RunFlag()
     while run:
-        manager.queue.reschedule()
+        size = manager.queue.reschedule()
+        if burst and not size:
+            break
         time.sleep(1)
 
 
@@ -158,3 +163,13 @@ def queue_list(tasks):
     manager = load_manager(tasks)
     for r in manager.queue.queue_list():
         print(r)
+
+
+@cli.command('stat')
+@click.option('-t', '--tasks', required=True, help=tasks_help)
+def queue_list(tasks):
+    """Print queue and schedule sizes"""
+    from .utils import load_manager
+    manager = load_manager(tasks)
+    for q, size in sorted(manager.queue.stat().items()):
+        print(q, size, sep='\t')

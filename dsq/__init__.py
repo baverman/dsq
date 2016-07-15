@@ -1,12 +1,12 @@
-from .manager import Manager
-from .store import QueueStore, ResultStore
-from .utils import redis_client
-
+version = '0.6'
 _is_main = False
 
 
 def create_manager(queue=None, result=None, sync=False,
                    unknown=None, default_queue=None):  # pragma: no cover
+    from .manager import Manager
+    from .store import QueueStore, ResultStore
+    from .utils import redis_client
     '''Helper to create dsq manager
 
     :param queue: Redis url for queue store. [redis://]host[:port]/dbnum.

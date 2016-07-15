@@ -55,10 +55,11 @@ class QueueStore(object):
 
     def reschedule(self, now=None):
         now = now or time()
-        items, _ = (self.client.pipeline()
-                    .zrangebyscore(SCHEDULE_KEY, '-inf', now)
-                    .zremrangebyscore(SCHEDULE_KEY, '-inf', now)
-                    .execute())
+        items, _, size = (self.client.pipeline()
+                          .zrangebyscore(SCHEDULE_KEY, '-inf', now)
+                          .zremrangebyscore(SCHEDULE_KEY, '-inf', now)
+                          .zcard(SCHEDULE_KEY)
+                          .execute())
 
         for chunk in iter_chunks(items, 5000):
             pipe = self.client.pipeline(False)
@@ -66,6 +67,8 @@ class QueueStore(object):
                 queue, _, task = r.partition(b':')
                 pipe.rpush(rqname(queue), task)
             pipe.execute()
+
+        return size
 
     def take_many(self, count):
         queues = self.queue_list()
@@ -104,6 +107,15 @@ class QueueStore(object):
 
     def queue_list(self):
         return [qname(r) for r in self.client.keys(rqname('*'))]
+
+    def stat(self):
+        pipe = self.client.pipeline(False)
+        pipe.zcard(SCHEDULE_KEY)
+        queues = self.queue_list()
+        for q in queues:
+            pipe.llen(rqname(q))
+        result = pipe.execute()
+        return dict(zip(['schedule'] + queues, result))
 
     def get_queue(self, queue, offset=0, limit=100):
         items = self.client.lrange(rqname(queue), offset, offset + limit - 1)

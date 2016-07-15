@@ -62,7 +62,7 @@ class Application(object):
 
         return {'id': self.manager.push(**task).id}
 
-    def get(self, environ):
+    def result(self, environ):
         qs = urlparse.parse_qs(environ.get('QUERY_STRING'))
         tid = qs.get('id')
         if not tid:
@@ -76,8 +76,8 @@ class Application(object):
         try:
             if method == 'POST' and url == '/push':
                 result = self.push(environ)
-            elif method in ('GET', 'HEAD') and url == '/get':
-                result = self.get(environ)
+            elif method in ('GET', 'HEAD') and url == '/result':
+                result = self.result(environ)
             else:
                 result = Error('404 NOT FOUND', 'not-found', 'Not found')
         except Exception as e:  # pragma: no cover

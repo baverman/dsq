@@ -1,6 +1,7 @@
 import traceback
 import logging
 import signal
+import random
 from time import time
 
 from .utils import RunFlag, task_fmt
@@ -15,7 +16,7 @@ class StopWorker(Exception):
 class Worker(object):
     def __init__(self, manager, lifetime=None, task_timeout=None):
         self.manager = manager
-        self.lifetime = lifetime
+        self.lifetime = lifetime and random.randint(lifetime, lifetime + lifetime // 10)
         self.task_timeout = task_timeout
         self.current_task = None
 
@@ -24,6 +25,7 @@ class Worker(object):
         if timeout: signal.alarm(timeout)
 
         self.current_task = task
+        log.info('Executing %s', task_fmt(task))
         self.manager.process(task)
 
         if timeout: signal.alarm(0)
@@ -36,7 +38,7 @@ class Worker(object):
             trace)
         raise StopWorker()
 
-    def process(self, queue_list):  # pragma: no cover
+    def process(self, queue_list, burst=False):  # pragma: no cover
         signal.signal(signal.SIGALRM, self.alarm_handler)
 
         run = RunFlag()
@@ -48,6 +50,8 @@ class Worker(object):
                     self.process_one(task)
                 except StopWorker:
                     break
+            elif burst:
+                break
 
             if self.lifetime and time() - start > self.lifetime:
                 break

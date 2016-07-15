@@ -24,7 +24,7 @@ class Task(object):
         self.ctx = kwargs
 
     def __call__(self, *args, **kwargs):
-        return self.manager.push(args=args, kwargs=kwargs, **self.ctx)
+        return self.manager.push(args=args or None, kwargs=kwargs or None, **self.ctx)
 
     def run_with(self, **kwargs):
         ctx = self.ctx.copy()
@@ -45,6 +45,7 @@ class Result(object):
     def __init__(self, manager, id, value=EMPTY):
         self.manager = manager
         self.id = id
+        self.error = None
         self._ready = False
         if value is not EMPTY:
             self._ready = True

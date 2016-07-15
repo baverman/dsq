@@ -28,6 +28,13 @@ def test_reschedule(store):
     assert store.pop(['test'], 1)[1] == 't1'
 
 
+def test_stat(store):
+    store.push('boo', 't1', eta=500)
+    store.push('boo', 't2')
+    store.push('boo', 't3')
+    assert store.stat() == {'schedule': 1, 'boo': 2}
+
+
 def task_names(tasks):
     return [msgpack.loads(r) for r in tasks]
 

@@ -1,8 +1,9 @@
 from setuptools import setup, find_packages
+import dsq
 
 setup(
     name='dsq',
-    version='0.4',
+    version=dsq.version,
     url='https://github.com/baverman/dsq/',
     license='MIT',
     author='Anton Bobrov',
