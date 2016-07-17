@@ -7,13 +7,15 @@ Why you don't use celery
 Celery has problems with worker freezes and there is no any tools
 to investigate whats wrong with it. A HUGE codebase leads to numerous bugs.
 Redis is not primary backend and generic interface don't allow to use
-redis effectively.
+redis effectively. I can do better.
 
 
 Why you don't use RQ
 --------------------
 
-RQ has no delayed tasks.
+RQ has no delayed tasks. And it has very strange worker forking model which
+one should keep in mind. Also codebase is not flexible enough to add
+delayed task support. I can do better.
 
 
 Why you don't use ...
