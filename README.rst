@@ -55,3 +55,42 @@ There are no task keys. Tasks are items of list and sorted set. There is no
 any registry to manage workers, basic requirements
 (die after some lifetime and do not hang) can be handled by workers themselves.
 Worker do not store result by default.
+
+
+Queue overhead benchmarks
+-------------------------
+
+DSQ has a little overhead in compare with RQ and Celery
+(https://gist.github.com/baverman/5303506cd89200cf246af7bafd569b2e)
+
+Pushing and processing 10k trivial add tasks::
+
+    === DSQ ===
+    Push
+    real	0m0.906s
+    user	0m0.790s
+    sys    	0m0.107s
+
+    Process
+    real	0m1.949s
+    user	0m0.763s
+    sys	        0m0.103s
+
+
+    === RQ ===
+    Push
+    real	0m3.617s
+    user	0m3.177s
+    sys   	0m0.293s
+
+    Process
+    real	0m57.706s
+    user	0m29.807s
+    sys	        0m20.070s
+
+
+    === Celery ===
+    Push
+    real	0m5.753s
+    user	0m5.237s
+    sys	        0m0.327s
