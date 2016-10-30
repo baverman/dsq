@@ -222,3 +222,29 @@ def test_tasks_should_have_non_none_fields(manager):
     assert t['name'] == 'foo'
     assert t['queue'] == 'boo'
     assert set(t) == set(('id', 'name', 'queue'))
+
+
+def test_stateful_tasks(manager):
+    @manager.task(queue='normal', init_state=lambda: [0])
+    def task(ctx):
+        ctx.state[0] += 1
+        ctx.set_result(None)
+
+    manager.process(make_task('task'))
+    manager.process(make_task('task'))
+    manager.process(make_task('task'))
+    assert manager.states['task'] == [3]
+
+
+def test_stateful_tasks_close(manager):
+    class State(object):
+        def close(self):
+            self.closed = True
+
+    @manager.task(queue='normal', init_state=State)
+    def task(ctx):
+        pass
+
+    manager.process(make_task('task'))
+    manager.close()
+    assert manager.states['task'].closed

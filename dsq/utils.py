@@ -7,7 +7,7 @@ from itertools import islice
 from redis import StrictRedis
 
 
-def make_id():  # pragma: no cover
+def make_id():
     """Make uniq short id"""
     return urlsafe_b64encode(uuid4().bytes).rstrip(b'=')
 
@@ -20,7 +20,7 @@ def task_fmt(task):
                               ', '.join(arglist), task.get('id', '__no_id__'))
 
 
-def iter_chunks(seq, chunk_size):  # pragma: no cover
+def iter_chunks(seq, chunk_size):
     it = iter(seq)
     while True:
         chunk = list(islice(it, chunk_size))

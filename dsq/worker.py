@@ -25,7 +25,6 @@ class Worker(object):
         if timeout: signal.alarm(timeout)
 
         self.current_task = task
-        log.info('Executing %s', task_fmt(task))
         self.manager.process(task)
 
         if timeout: signal.alarm(0)
@@ -55,3 +54,5 @@ class Worker(object):
 
             if self.lifetime and time() - start > self.lifetime:
                 break
+
+        self.manager.close()

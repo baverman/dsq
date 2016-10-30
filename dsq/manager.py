@@ -37,9 +37,13 @@ class Task(object):
 
 
 class Context(object):
-    def __init__(self, manager, task):
+    def __init__(self, manager, task, state=None):
         self.manager = manager
         self.task = task
+        self.state = state
+
+    def set_result(self, *args, **kwargs):
+        self.manager.set_result(self.task, *args, **kwargs)
 
 
 class EMPTY: pass
@@ -101,11 +105,26 @@ class Manager(object):
         self.result = result
         self.sync = sync
         self.registry = {}
+        self.states = {}
         self.unknown = unknown or 'unknown'
         self.default_queue = default_queue or 'dsq'
         self.default_retry_delay = 60
 
-    def task(self, name=None, queue=None, with_context=False, **kwargs):
+    def get_state(self, name, init):
+        try:
+            return self.states[name]
+        except KeyError:
+            pass
+
+        result = self.states[name] = init()
+        return result
+
+    def close(self):
+        for s in self.states.values():
+            if hasattr(s, 'close'):
+                s.close()
+
+    def task(self, name=None, queue=None, with_context=False, init_state=None, **kwargs):
         """Task decorator
 
         Function wrapper to register task in manager and provide simple interface to calling it.
@@ -113,6 +132,7 @@ class Manager(object):
         :param name: Task name, dsq will use func.__name__ if not provided.
         :param queue: Queue name to use.
         :param with_context: Provide task context as first task argument.
+        :param init_state: Task state initializer.
         :param \*\*kwrags: Rest params as for :py:meth:`push`.
 
         ::
@@ -132,7 +152,7 @@ class Manager(object):
         """
         def decorator(func):
             fname = tname or func.__name__
-            self.register(fname, func, with_context)
+            self.register(fname, func, with_context, init_state)
             return Task(self, func, queue=queue or self.default_queue, name=fname, **kwargs)
 
         if callable(name):
@@ -142,12 +162,13 @@ class Manager(object):
         tname = name
         return decorator
 
-    def register(self, name, func, with_context=False):
+    def register(self, name, func, with_context=False, init_state=None):
         """Register task
 
         :param name: Task name.
         :param func: Function.
         :param with_context: Provide task context as first task argument.
+        :param init_state: Task state initializer.
 
         ::
 
@@ -157,9 +178,7 @@ class Manager(object):
             manager.register('add', add)
             manager.push('normal', 'add', (1, 2), keep_result=300)
         """
-        if with_context:
-            func._dsq_context = True
-        self.registry[name] = func
+        self.registry[name] = (func, with_context or init_state, init_state)
 
     def push(self, queue, name, args=None, kwargs=None, meta=None, ttl=None,
              eta=None, delay=None, dead=None, retry=None, retry_delay=None,
@@ -224,27 +243,31 @@ class Manager(object):
         :param log_exc: Log any exception during task execution. ``True`` by default.
         """
         expire = task.get('expire')
+        tname = task['name']
         if expire is not None and (now or time()) > expire:
             return
 
         try:
-            func = self.registry[task['name']]
+            func, with_context, init_state = self.registry[tname]
         except KeyError:
             if self.sync:
                 raise
             self.queue.push(self.unknown, task)
-            log.error('Function for task "%s" not found', task['name'])
+            log.error('Function for task "%s" not found', tname)
             return
 
         args = task.get('args', ())
         kwargs = task.get('kwargs', {})
+        log.info('Executing %s', task_fmt(task))
         try:
-            if getattr(func, '_dsq_context', None):
-                result = func(Context(self, task), *args, **kwargs)
+            if with_context:
+                ctx = Context(self, task, init_state and self.get_state(tname, init_state))
+                result = func(ctx, *args, **kwargs)
             else:
                 result = func(*args, **kwargs)
 
-            self.set_result(task, result, now=now)
+            if not init_state:
+                self.set_result(task, result, now=now)
             return result
         except StopWorker:
             raise
@@ -269,7 +292,7 @@ class Manager(object):
                 raise
 
             if log_exc:
-                log.exception('Error during processing task {}'.format(task_fmt(task)), exc_info=exc_info)
+                log.exception('Error during processing task %s', task_fmt(task), exc_info=exc_info)
 
             retry = task.get('retry')
             if retry and retry > 0:
@@ -291,5 +314,7 @@ class Manager(object):
                           'message': '{}'.format(exc_info[1]),
                           'trace': ''.join(traceback.format_exception(*exc_info))}
                 self.result.set(task['id'], result, keep_result)
-        elif keep_result:
-            self.result.set(task['id'], {'result': result}, keep_result)
+        else:
+            if keep_result:
+                self.result.set(task['id'], {'result': result}, keep_result)
+            log.info('Done %s', task_fmt(task))

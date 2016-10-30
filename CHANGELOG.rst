@@ -1,5 +1,5 @@
-CHANGES
-=======
+Changelog
+=========
 
 0.7dev
 ======
@@ -28,3 +28,8 @@ CHANGES
       boo.push('foo')
       boo.modify(keep_result=300).push('foo')
       boo('foo')  # sync (original func) call
+
+* Feature. Stateful tasks. One can define a shared state for task functions. It
+  can be used for async io, for example.
+
+* Fixed. Log done status for tasks.
