@@ -97,7 +97,7 @@ def test_task_calling(manager):
         assert boo == 'boo'
         foo.called = True
 
-    foo('bar', boo='boo')
+    foo.push('bar', boo='boo')
     task = manager.pop(['test'], 1)
     manager.process(task)
     assert foo.called
@@ -109,7 +109,7 @@ def test_string_types(manager):
         assert type(bstr) == type(b'')
         assert type(ustr) == type(u'')
 
-    foo(b'boo', u'boo')
+    foo.push(b'boo', u'boo')
     task = manager.pop(['test'], 1)
     manager.process(task)
 
@@ -119,7 +119,7 @@ def test_task_modification(manager):
     def foo():
         pass
 
-    foo.run_with(queue='bar', ttl=10, dead='dead')()
+    foo.modify(queue='bar', ttl=10, dead='dead').push()
     task = manager.pop(['bar'], 1)
     assert task['queue'] == 'bar'
     assert task['expire']
@@ -131,8 +131,8 @@ def test_task_sync(manager):
     def foo(a, b):
         return a + b
 
-    assert foo.sync(1, 2) == 3
-    assert foo.run_with(queue='normal').sync(1, 2) == 3
+    assert foo(1, 2) == 3
+    assert foo.modify(queue='normal')(1, 2) == 3
 
 
 def test_sync_manager(manager):
@@ -143,7 +143,7 @@ def test_sync_manager(manager):
         foo.called = True
         return a + b
 
-    assert foo(1, 2).ready().value == 3
+    assert foo.push(1, 2).ready().value == 3
     assert foo.called
 
     with pytest.raises(KeyError):
@@ -154,7 +154,7 @@ def test_sync_manager(manager):
         raise ZeroDivisionError()
 
     with pytest.raises(ZeroDivisionError):
-        bad()
+        bad.push()
 
 
 def test_task_with_context(manager):
@@ -167,7 +167,7 @@ def test_task_with_context(manager):
         assert ctx
         assert a + b == 3
 
-    foo(1, 2)
+    foo.push(1, 2)
     assert foo.called
 
 
@@ -206,7 +206,7 @@ def test_result_exception(manager):
     def task():
         1/0
 
-    result = task()
+    result = task.push()
     manager.process(manager.pop(['normal'], 1))
     assert result.ready()
     assert result.error == 'ZeroDivisionError'

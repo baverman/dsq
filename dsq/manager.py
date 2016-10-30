@@ -18,18 +18,21 @@ def make_task(name, **kwargs):
 
 
 class Task(object):
-    def __init__(self, manager, func, **kwargs):
-        self.sync = func
+    def __init__(self, manager, func, **params):
         self.manager = manager
-        self.ctx = kwargs
+        self.func = func
+        self.params = params
 
     def __call__(self, *args, **kwargs):
-        return self.manager.push(args=args or None, kwargs=kwargs or None, **self.ctx)
+        return self.func(*args, **kwargs)
 
-    def run_with(self, **kwargs):
-        ctx = self.ctx.copy()
-        ctx.update(kwargs)
-        return Task(self.manager, self.sync, **ctx)
+    def push(self, *args, **kwargs):
+        return self.manager.push(args=args or None, kwargs=kwargs or None, **self.params)
+
+    def modify(self, **params):
+        new_params = self.params.copy()
+        new_params.update(params)
+        return Task(self.manager, self.func, **new_params)
 
 
 class Context(object):
@@ -122,9 +125,9 @@ class Manager(object):
                 print ctx.task['id']
                 return long_running_func(arg)
 
-            task1('boo')  # push task to queue
-            task2.run_with(keep_result=300)('foo')  # push task with keep_result option.
-            task1.sync('boo')  # direct call of task1.
+            task1.push('boo')  # push task to queue
+            task2.modify(keep_result=300).push('foo')  # push task with keep_result option.
+            task1('boo')  # direct call of task1.
         """
         def decorator(func):
             fname = tname or func.__name__

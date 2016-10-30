@@ -33,11 +33,12 @@ Yep. It's an effective guard against complex objects, for example
 ORM instances with convoluted state. Tasks do simple things and should
 have simple arguments. I saw many real celery tasks which
 take ``user`` object and use only ``user.id`` from it. It's better
-to write a task wrapper with simple arguments for underlying api
+to write a task wrapper with simple arguments for and use underlying api
 function then have fun with a pickle magic.
 
 
 What about JSON?
 ----------------
 
-JSON can't into byte strings. It is the most dumb way to serialize data.
+JSON can't into byte strings and non-string dict keys. It is the most
+dumb way to serialize data.

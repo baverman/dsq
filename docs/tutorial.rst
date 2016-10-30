@@ -17,7 +17,7 @@ Also you need to start redis.
 Register and push task
 ----------------------
 
-Task is user defined function which actual execution can be
+Task is user-defined function which actual execution can be
 postponed by pushing name and arguments into some queue.
 One can have multiple queues. Queues are created on the fly.
 
@@ -86,7 +86,7 @@ There is a shortcut to register tasks and push them via
         print value
 
     if __name__ == '__main__':
-        task(sys.argv[1])
+        task.push(sys.argv[1])
 
 
 .. _queue-priorities:
@@ -113,12 +113,12 @@ from a second if first is empty and so on::
         print 'normal', value
 
     if __name__ == '__main__':
-        normal(1)
-        normal(2)
-        normal(3)
-        high(4)
-        normal(5)
-        high(6)
+        normal.push(1)
+        normal.push(2)
+        normal.push(3)
+        high.push(4)
+        normal.push(5)
+        high.push(6)
 
 And processing::
 
@@ -162,7 +162,7 @@ You can use ``eta`` or ``delay`` parameter to postpone task::
         print value
 
     if __name__ == '__main__':
-        task.run_with(delay=30)(sys.argv[1])
+        task.modify(delay=30).push(sys.argv[1])
 
 You should use ``scheduler`` command to queue such tasks::
 
@@ -214,7 +214,7 @@ Provide ``keep_result`` parameter to be able fetch task result later::
         return a/b
 
     if __name__ == '__main__':
-        result = div(int(sys.argv[1]), int(sys.argv[2]))
+        result = div.push(int(sys.argv[1]), int(sys.argv[2]))
         if result.ready(5):
             if result.error:
                 print result.error, result.error_message

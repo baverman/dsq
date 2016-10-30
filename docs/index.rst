@@ -14,7 +14,7 @@ Dead simple task queue using redis. `GitHub <https://github.com/baverman/dsq>`_.
         print a + b
 
     if __name__ == '__main__':
-        add(1, 2)
+        add.push(1, 2)
 
 .. code:: bash
 
