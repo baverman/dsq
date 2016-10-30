@@ -1,8 +1,9 @@
 from __future__ import print_function
 
-from time import time, sleep
+import sys
 import logging
 import traceback
+from time import time, sleep
 
 from .utils import make_id, task_fmt
 from .worker import StopWorker
@@ -237,25 +238,38 @@ class Manager(object):
 
         args = task.get('args', ())
         kwargs = task.get('kwargs', {})
-        keep_result = task.get('keep_result')
         try:
             if getattr(func, '_dsq_context', None):
                 result = func(Context(self, task), *args, **kwargs)
             else:
                 result = func(*args, **kwargs)
 
-            if keep_result:
-                self.result.set(task['id'], {'result': result}, keep_result)
-
+            self.set_result(task, result, now=now)
             return result
         except StopWorker:
             raise
-        except Exception as e:
+        except Exception:
+            self.set_result(task, exc_info=True, log_exc=log_exc, now=now)
+
+    def set_result(self, task, result=None, exc_info=None, now=None, log_exc=True):
+        """Set result for task item
+
+        :param task: Task.
+        :param result: Result value.
+        :param exc_info: Set exception info, retrieve it via sys.exc_info() if True.
+        :param now: Unix timestamp to set ``eta`` on retry.
+        :param log_exc: Log exc_info if any. ``True`` by default.
+        """
+        keep_result = task.get('keep_result')
+        if exc_info:
+            if exc_info is True:
+                exc_info = sys.exc_info()
+
             if self.sync:
                 raise
 
             if log_exc:
-                log.exception('Error during processing task {}'.format(task_fmt(task)))
+                log.exception('Error during processing task {}'.format(task_fmt(task)), exc_info=exc_info)
 
             retry = task.get('retry')
             if retry and retry > 0:
@@ -273,7 +287,9 @@ class Manager(object):
                 self.queue.push(task['dead'], task)
 
             if keep_result:
-                result = {'error': type(e).__name__,
-                          'message': '{}'.format(e),
-                          'trace': traceback.format_exc()}
+                result = {'error': exc_info[0].__name__,
+                          'message': '{}'.format(exc_info[1]),
+                          'trace': ''.join(traceback.format_exception(*exc_info))}
                 self.result.set(task['id'], result, keep_result)
+        elif keep_result:
+            self.result.set(task['id'], {'result': result}, keep_result)
