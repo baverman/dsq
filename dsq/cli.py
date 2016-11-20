@@ -53,11 +53,29 @@ def scheduler(tasks, burst):
     from .utils import RunFlag, load_manager
     manager = load_manager(tasks)
     run = RunFlag()
-    while run:
-        size = manager.queue.reschedule()
-        if burst and not size:
-            break
-        time.sleep(1)
+    if burst:
+        while run:
+            if not manager.queue.reschedule():
+                break
+            time.sleep(1)
+    else:
+        now = time.time()
+        timer = manager.periodic.timer(now)
+        timer.add(manager.queue.reschedule, now, 1)
+        timer.add('check-crontab', now, 60)
+        crontab_check = manager.crontab.checker()
+        for next_run, action in timer:
+            now = time.time()
+            if next_run > now:
+                time.sleep(next_run - now)
+
+            if not run:
+                break
+
+            if action == 'check-crontab':
+                crontab_check(next_run)
+            else:
+                action()
 
 
 @cli.command()
@@ -167,7 +185,7 @@ def queue_list(tasks):
 
 @cli.command('stat')
 @click.option('-t', '--tasks', required=True, help=tasks_help)
-def queue_list(tasks):
+def stat(tasks):
     """Print queue and schedule sizes"""
     from .utils import load_manager
     manager = load_manager(tasks)

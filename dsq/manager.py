@@ -5,8 +5,9 @@ import logging
 import traceback
 from time import time, sleep
 
-from .utils import make_id, task_fmt
+from .utils import make_id, task_fmt, safe_call
 from .worker import StopWorker
+from .sched import Timer, Crontab
 from .compat import PY2
 
 log = logging.getLogger(__name__)
@@ -109,6 +110,8 @@ class Manager(object):
         self.unknown = unknown or 'unknown'
         self.default_queue = default_queue or 'dsq'
         self.default_retry_delay = 60
+        self.crontab = CrontabCollector()
+        self.periodic = PeriodicCollector()
 
     def get_state(self, name, init):
         try:
@@ -318,3 +321,46 @@ class Manager(object):
             if keep_result:
                 self.result.set(task['id'], {'result': result}, keep_result)
             log.info('Done %s', task_fmt(task))
+
+
+class CrontabCollector(object):
+    def __init__(self):
+        self.entries = []
+
+    def checker(self):
+        crontab = Crontab()
+        for r in self.entries:
+            crontab.add(*r)
+
+        def check(ts):
+            for action in crontab.actions_ts(ts):
+                action()
+
+        return check
+
+    def __call__(self, minute=-1, hour=-1, day=-1, month=-1, wday=-1):
+        def inner(func):
+            if isinstance(func, Task):
+                func = func.push
+            self.entries.append((safe_call(func, log), minute, hour, day, month, wday))
+            return func
+        return inner
+
+
+class PeriodicCollector(object):
+    def __init__(self):
+        self.entries = []
+
+    def timer(self, now):
+        t = Timer()
+        for action, interval in self.entries:
+            t.add(action, now, interval)
+        return t
+
+    def __call__(self, interval):
+        def inner(func):
+            if isinstance(func, Task):
+                func = func.push
+            self.entries.append((safe_call(func, log), interval))
+            return func
+        return inner

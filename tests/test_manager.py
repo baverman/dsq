@@ -248,3 +248,42 @@ def test_stateful_tasks_close(manager):
     manager.process(make_task('task'))
     manager.close()
     assert manager.states['task'].closed
+
+
+def test_crontab_collector(manager):
+    @manager.crontab()
+    @manager.task(queue='normal')
+    def boo():
+        pass
+
+    @manager.crontab()
+    def bar():
+        bar.called = True
+        1/0
+
+    check = manager.crontab.checker()
+    check(1)
+    manager.process(manager.pop(['normal'], 1))
+    assert bar.called == True
+
+
+def test_periodic_collector(manager):
+    @manager.periodic(1)
+    @manager.task(queue='normal')
+    def boo():
+        pass
+
+    @manager.periodic(1)
+    def bar():
+        bar.called = True
+        1/0
+
+    timer = manager.periodic.timer(0)
+    titer = iter(timer)
+    _, a = next(titer)
+    a()
+    _, a = next(titer)
+    a()
+
+    manager.process(manager.pop(['normal'], 1))
+    assert bar.called == True

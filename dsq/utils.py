@@ -3,6 +3,7 @@ import signal
 from uuid import uuid4
 from base64 import urlsafe_b64encode
 from itertools import islice
+from functools import wraps
 
 from redis import StrictRedis
 
@@ -88,3 +89,13 @@ def load_manager(module_name):  # pragma: no cover
     except LoadError as e:
         print('{} not found in {}'.format(e.var, e.module))
         sys.exit(1)
+
+
+def safe_call(func, logger):
+    @wraps(func)
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            logger.exception('Error in safe call:')
+    return inner
