@@ -37,6 +37,8 @@ Features
 * Expiring tasks (TTL).
 * Delayed tasks (ETA).
 * Retries (forever or particular amount).
+* Periodic tasks.
+* Crontab.
 * Dead letters.
 * Queue priorities.
 * Worker lifetime.
@@ -44,7 +46,7 @@ Features
 * Task forwarder from one redis instance to another.
 * HTTP interface.
 * Inspect tools.
-* Supports 2.7, 3.4, 3.5 and PyPy.
+* Supports 2.7, 3.4, 3.5, 3.6 and PyPy.
 * 100% test coverage.
 
 

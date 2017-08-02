@@ -4,7 +4,7 @@ Changelog
 0.7dev
 ======
 
-* Breaking. Explicit task enqueue. I did a mistake in API design. All queue
+* [Breaking] Explicit task enqueue. I did a mistake in API design. All queue
   ops must be visible and transparent for source code reader. So old code:
 
   .. code:: python
@@ -29,7 +29,10 @@ Changelog
       boo.modify(keep_result=300).push('foo')
       boo('foo')  # sync (original func) call
 
-* Feature. Stateful tasks. One can define a shared state for task functions. It
+* [Feature] Stateful tasks. One can define a shared state for task functions. It
   can be used for async io, for example.
 
-* Fixed. Log done status for tasks.
+* [Feature] `@manager.periodic` and `@manager.crontab` to schedule task
+  execution.
+
+* [Fix] Log done status for tasks.
