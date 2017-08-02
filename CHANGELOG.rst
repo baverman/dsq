@@ -1,8 +1,5 @@
-Changelog
-=========
-
-0.7dev
-======
+0.7
+===
 
 * [Breaking] Explicit task enqueue. I did a mistake in API design. All queue
   ops must be visible and transparent for source code reader. So old code:

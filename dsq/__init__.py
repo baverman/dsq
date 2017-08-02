@@ -1,4 +1,4 @@
-version = '0.7dev'
+version = '0.7'
 _is_main = False
 
 
