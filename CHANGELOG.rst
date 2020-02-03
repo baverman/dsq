@@ -1,3 +1,8 @@
+0.8
+===
+
+* [Fix] TERM and INT signals don't work under python3
+
 0.7
 ===
 

@@ -28,7 +28,8 @@ def iter_chunks(seq, chunk_size):
         if chunk:
             yield chunk
         else:
-            break
+            pass   # coverage under python 3.8 marks break as missing
+            break  # pragma: no cover
 
 
 class RunFlag(object):  # pragma: no cover
@@ -36,6 +37,9 @@ class RunFlag(object):  # pragma: no cover
         self._flag = True
         signal.signal(signal.SIGINT, self.handler)
         signal.signal(signal.SIGTERM, self.handler)
+
+    def __bool__(self):
+        return self._flag
 
     def __nonzero__(self):
         return self._flag
