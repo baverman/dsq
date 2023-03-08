@@ -38,7 +38,7 @@ class QueueStore(object):
         assert ':' not in queue, 'Queue name must not contain colon: "{}"'.format(queue)
         body = dumps(task, use_bin_type=True)  # TODO: may be better to move task packing to manager
         if eta:
-            self.client.zadd(SCHEDULE_KEY, eta, sitem(queue, body))
+            self.client.zadd(SCHEDULE_KEY, {sitem(queue, body): eta})
         else:
             self.client.rpush(rqname(queue), body)
 
@@ -95,9 +95,7 @@ class QueueStore(object):
         pipe = self.client.pipeline(False)
 
         if batch['schedule']:
-            sitems = []
-            [sitems.extend((r[1], r[0])) for r in batch['schedule']]
-            pipe.zadd(SCHEDULE_KEY, *sitems)
+            pipe.zadd(SCHEDULE_KEY, dict(batch['schedule']))
 
         for q, items in iteritems(batch['queues']):
             if items:

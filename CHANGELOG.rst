@@ -1,3 +1,8 @@
+dev
+===
+
+* [Fix] Support redis-py>=3.0 (fixed zadd command arguments)
+
 0.8
 ===
 
