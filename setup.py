@@ -15,7 +15,7 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=[
-        'redis >= 2.7.0,<3',
+        'redis >= 3',
         'click >= 5.0.0',
         'msgpack-python>=0.4.0',
     ],
