@@ -1,4 +1,4 @@
-dev
+0.9
 ===
 
 * [Fix] Support redis-py>=3.0 (fixed zadd command arguments)

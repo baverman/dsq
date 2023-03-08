@@ -128,7 +128,7 @@ class Manager(object):
                 s.close()
 
     def task(self, name=None, queue=None, with_context=False, init_state=None, **kwargs):
-        """Task decorator
+        r"""Task decorator
 
         Function wrapper to register task in manager and provide simple interface to calling it.
 
